@@ -1,0 +1,9 @@
+{
+  "name": "operation-bluebird",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Layoff-decision classroom simulation game, judged live by Claude, deployable on Vercel.",
+  "engines": {
+    "node": ">=18"
+  }
+}

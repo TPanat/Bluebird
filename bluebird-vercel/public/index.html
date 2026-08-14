@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OPERATION BLUEBIRD — เกมจำลองการปรับโครงสร้างองค์กร</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=Prompt:wght@500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0e1117; --panel:#171c26; --panel2:#1f2632; --border:#2b3342;
+    --text:#eae7de; --dim:#8891a3; --danger:#ff5c66; --warn:#f4b942; --good:#43d9b8; --accent:#5b8cff;
+    --mono:'IBM Plex Mono',monospace; --body:'IBM Plex Sans Thai',sans-serif; --display:'Prompt',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:var(--body);}
+  body{padding-bottom:52px;min-height:100vh;}
+  ::selection{background:var(--accent);color:#0e1117;}
+  .wrap{max-width:1080px;margin:0 auto;padding:28px 20px 60px;}
+  .masthead{display:flex;align-items:baseline;justify-content:space-between;gap:12px;border-bottom:2px solid var(--border);padding-bottom:14px;margin-bottom:26px;flex-wrap:wrap;}
+  .masthead .brand{font-family:var(--display);font-weight:800;font-size:22px;letter-spacing:0.5px;}
+  .masthead .brand span{color:var(--accent);}
+  .masthead .tag{font-family:var(--mono);font-size:12px;color:var(--dim);letter-spacing:1px;}
+  .screen{display:none;}
+  .screen.active{display:block;animation:fade .35s ease;}
+  @keyframes fade{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
+  .briefing{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:28px;}
+  .briefing h1{font-family:var(--display);font-size:clamp(26px,4vw,38px);font-weight:800;line-height:1.15;margin:0 0 14px;}
+  .briefing h1 em{font-style:normal;color:var(--warn);}
+  .briefing p{line-height:1.75;color:#cfd4de;margin:0 0 14px;font-size:15px;}
+  .brief-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:22px 0;}
+  .brief-stats div{background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:12px 14px;}
+  .brief-stats .n{font-family:var(--mono);font-size:22px;font-weight:600;color:var(--accent);}
+  .brief-stats .l{font-size:12px;color:var(--dim);margin-top:2px;}
+  label.field-label{display:block;font-size:13px;color:var(--dim);margin:20px 0 8px;font-family:var(--mono);letter-spacing:.5px;}
+  input#teamName{width:100%;background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:12px 14px;color:var(--text);font-family:var(--body);font-size:15px;}
+  input#teamName:focus{outline:2px solid var(--accent);border-color:var(--accent);}
+  .btn{cursor:pointer;border:none;border-radius:8px;font-family:var(--display);font-weight:600;font-size:15px;padding:13px 24px;transition:transform .12s ease, filter .12s ease;}
+  .btn:hover{filter:brightness(1.12);}
+  .btn:active{transform:scale(.98);}
+  .btn:focus-visible{outline:2px solid #fff;outline-offset:2px;}
+  .btn-primary{background:var(--accent);color:#0b0e14;}
+  .btn-primary:disabled{background:var(--panel2);color:var(--dim);cursor:not-allowed;filter:none;}
+  .btn-ghost{background:transparent;border:1px solid var(--border);color:var(--text);}
+  .actions{display:flex;gap:12px;margin-top:24px;flex-wrap:wrap;}
+  .dept-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:14px;margin:18px 0 26px;}
+  .dept-card{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:16px;}
+  .dept-top{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+  .badge{font-family:var(--mono);font-weight:700;font-size:13px;background:var(--panel2);border:1px solid var(--border);color:var(--accent);border-radius:6px;padding:4px 8px;}
+  .dept-name{font-weight:600;font-size:14.5px;line-height:1.3;}
+  .dept-docket{font-family:var(--mono);font-size:10.5px;color:var(--dim);letter-spacing:.5px;margin-bottom:2px;}
+  .dept-count{font-family:var(--mono);font-size:12px;color:var(--dim);margin-bottom:10px;}
+  .dept-count b{color:var(--text);}
+  input[type=range]{width:100%;accent-color:var(--danger);cursor:pointer;height:22px;}
+  .dept-readout{display:flex;justify-content:space-between;font-family:var(--mono);font-size:12px;margin-top:8px;}
+  .dept-readout .cutval{color:var(--danger);font-weight:600;}
+  .dept-readout .pctval{color:var(--dim);}
+  .section-title{font-family:var(--display);font-weight:700;font-size:15px;letter-spacing:.5px;color:var(--dim);text-transform:uppercase;margin:30px 0 12px;border-left:3px solid var(--accent);padding-left:10px;}
+  .method-panel{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:18px 20px;}
+  .method-panel .hint{font-size:12.5px;color:var(--dim);line-height:1.6;margin-bottom:14px;}
+  .chip-row{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;}
+  .chip{font-family:var(--mono);font-size:11.5px;background:var(--panel2);border:1px solid var(--border);color:var(--dim);border-radius:20px;padding:6px 12px;cursor:pointer;}
+  .chip:hover{border-color:var(--accent);color:var(--text);}
+  textarea#methodText{width:100%;min-height:110px;background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:14px;color:var(--text);font-family:var(--body);font-size:14.5px;line-height:1.6;resize:vertical;}
+  textarea#methodText:focus{outline:2px solid var(--accent);border-color:var(--accent);}
+  .charcount{text-align:right;font-family:var(--mono);font-size:11px;color:var(--dim);margin-top:6px;}
+  .judge-status{margin-top:12px;font-family:var(--mono);font-size:12.5px;min-height:18px;}
+  .judge-status.loading{color:var(--warn);}
+  .judge-status.error{color:var(--danger);}
+  .judge-status.ok{color:var(--good);}
+  .spin{display:inline-block;width:9px;height:9px;border:2px solid var(--warn);border-top-color:transparent;border-radius:50%;animation:spin .7s linear infinite;margin-right:6px;vertical-align:middle;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  .summary-bar{position:sticky;bottom:52px;background:var(--panel2);border:1px solid var(--border);border-radius:10px;padding:14px 18px;display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-top:26px;}
+  .summary-bar .info{font-family:var(--mono);font-size:13px;color:var(--dim);}
+  .summary-bar .info b{color:var(--text);}
+  #ticker-bar{position:fixed;left:0;bottom:0;width:100%;height:38px;background:#090b10;border-top:1px solid var(--border);overflow:hidden;display:flex;align-items:center;z-index:50;}
+  #ticker-bar .lamp{flex:0 0 auto;font-family:var(--mono);font-size:11px;font-weight:700;background:var(--danger);color:#1a0507;padding:8px 12px;letter-spacing:1px;height:100%;display:flex;align-items:center;}
+  .ticker-track{flex:1;overflow:hidden;white-space:nowrap;position:relative;height:100%;}
+  .ticker-content{display:inline-flex;align-items:center;height:100%;font-family:var(--mono);font-size:12.5px;color:#cfd4de;animation:scroll-left 26s linear infinite;padding-left:100%;}
+  .ticker-content span{margin-right:40px;}
+  @keyframes scroll-left{from{transform:translateX(0);}to{transform:translateX(-100%);}}
+  .verdict{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:24px 26px;margin-bottom:24px;}
+  .verdict-grade{font-family:var(--display);font-weight:800;font-size:clamp(24px,4vw,34px);margin-bottom:6px;}
+  .verdict-sub{font-family:var(--mono);font-size:12.5px;color:var(--dim);margin-bottom:16px;}
+  .verdict p{line-height:1.7;color:#d8dce4;font-size:14.5px;margin:0;}
+  .claude-note{background:var(--panel2);border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:8px;padding:14px 16px;margin-bottom:24px;}
+  .claude-note .who{font-family:var(--mono);font-size:11px;color:var(--accent);letter-spacing:.5px;margin-bottom:6px;}
+  .claude-note p{margin:0;font-size:14px;line-height:1.7;color:#d8dce4;}
+  .meters{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px;margin-bottom:24px;}
+  .meter-card{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:16px;}
+  .meter-label{font-size:12.5px;color:var(--dim);margin-bottom:8px;display:flex;justify-content:space-between;font-family:var(--mono);}
+  .meter-label .val{color:var(--text);font-weight:700;}
+  .meter-track{height:9px;border-radius:5px;background:var(--panel2);overflow:hidden;}
+  .meter-fill{height:100%;border-radius:5px;transition:width .8s cubic-bezier(.2,.8,.2,1);}
+  .report{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:20px 22px;margin-bottom:24px;}
+  .report h3{font-family:var(--display);font-size:15px;letter-spacing:.5px;color:var(--dim);text-transform:uppercase;margin:0 0 14px;}
+  .report ul{margin:0;padding-left:20px;line-height:1.8;font-size:14px;color:#d8dce4;}
+  .report li{margin-bottom:6px;}
+  table.cmp{width:100%;border-collapse:collapse;font-size:13px;}
+  table.cmp th,table.cmp td{border-bottom:1px solid var(--border);padding:9px 8px;text-align:left;font-family:var(--mono);}
+  table.cmp th{color:var(--dim);font-weight:600;font-size:11.5px;text-transform:uppercase;letter-spacing:.5px;}
+  table.cmp td.hi{color:var(--danger);font-weight:700;}
+  .cmp-wrap{overflow-x:auto;}
+  @media (max-width:600px){ .wrap{padding:18px 14px 40px;} .briefing{padding:20px;} .summary-bar{position:static;} }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="masthead">
+    <div class="brand">OPERATION <span>BLUEBIRD</span></div>
+    <div class="tag">SIM // ORG-RESTRUCTURE-CASE-STUDY // VERCEL v1.0</div>
+  </div>
+
+  <section id="screen-intro" class="screen active">
+    <div class="briefing">
+      <h1>คุณคือทีมผู้บริหารใหม่ที่เพิ่ง<em>เทคโอเวอร์</em>บริษัทโซเชียลมีเดียแห่งหนึ่ง</h1>
+      <p>
+        ผู้ถือหุ้นใหญ่ต้องการลดต้นทุนองค์กรอย่างรวดเร็ว โจทย์คล้ายกับกรณีศึกษาการปรับโครงสร้างพนักงาน Twitter หลังการเทคโอเวอร์ปี 2022 —
+        คุณต้องตัดสินใจว่าจะ "ปลดพนักงาน" กี่คนจากแต่ละฝ่าย และ<b>เขียนอธิบายเป็นคำพูดของคุณเอง</b>ว่าจะใช้วิธีการแจ้งเลิกจ้างอย่างไร
+        <b>Claude จะอ่านคำอธิบายของทีมคุณแล้วตัดสินผลกระทบให้</b> เหมือนที่ปรึกษา HR/กฎหมาย/PR ตัวจริง
+      </p>
+      <div class="brief-stats">
+        <div><div class="n">1,380</div><div class="l">พนักงานทั้งหมด</div></div>
+        <div><div class="n">7</div><div class="l">ฝ่ายงาน</div></div>
+        <div><div class="n">พิมพ์เอง</div><div class="l">วิธีการเลิกจ้าง</div></div>
+        <div><div class="n">Claude</div><div class="l">เป็นผู้ตัดสินผลกระทบ</div></div>
+      </div>
+      <label class="field-label">ชื่อทีม / กลุ่ม</label>
+      <input id="teamName" type="text" placeholder="เช่น กลุ่ม 1, ทีม Falcon...">
+      <div class="actions">
+        <button class="btn btn-primary" id="btn-start">เริ่มภารกิจ →</button>
+        <button class="btn btn-ghost" id="btn-view-compare-intro">ดูตารางเปรียบเทียบทุกกลุ่ม</button>
+      </div>
+      <p style="margin-top:16px;font-size:12px;color:var(--dim);">
+        ผลของทุกกลุ่มจะถูกบันทึกไว้ที่ส่วนกลางและมองเห็นร่วมกันได้ในตารางเปรียบเทียบ
+      </p>
+    </div>
+  </section>
+
+  <section id="screen-dashboard" class="screen">
+    <div class="section-title">ขั้นที่ 1 — เลือกจำนวนที่จะปลดออกจากแต่ละฝ่าย</div>
+    <div class="dept-grid" id="dept-grid"></div>
+
+    <div class="section-title">ขั้นที่ 2 — อธิบายวิธีการแจ้งเลิกจ้างเป็นคำพูดของคุณเอง</div>
+    <div class="method-panel">
+      <div class="hint">พิมพ์อธิบายว่าทีมคุณจะแจ้งข่าวและดำเนินการเลิกจ้างอย่างไร (ใครแจ้ง แจ้งเมื่อไหร่ ล่วงหน้ากี่วัน มีค่าชดเชยไหม ตัดสิทธิ์เข้าระบบตอนไหน ฯลฯ) — ลองคลิกตัวอย่างด้านล่างเพื่อเริ่มต้นก็ได้</div>
+      <div class="chip-row" id="chip-row"></div>
+      <textarea id="methodText" maxlength="500" placeholder="เช่น: ส่งอีเมลแจ้งเลิกจ้างตอนเที่ยงคืน พร้อมตัดสิทธิ์เข้าระบบทันที โดยไม่แจ้งล่วงหน้า..."></textarea>
+      <div class="charcount"><span id="charcount">0</span>/500</div>
+      <div class="judge-status" id="judge-status"></div>
+    </div>
+
+    <div class="summary-bar">
+      <div class="info">รวมที่จะปลดออก: <b id="sum-cut">0</b> / 1,380 คน (<b id="sum-pct">0%</b>)</div>
+      <button class="btn btn-primary" id="btn-confirm" disabled>ส่งให้ Claude ตัดสิน →</button>
+    </div>
+  </section>
+
+  <section id="screen-results" class="screen">
+    <div class="verdict">
+      <div class="verdict-sub" id="res-teamline">ทีม: —</div>
+      <div class="verdict-grade" id="res-grade">—</div>
+      <p id="res-summary"></p>
+    </div>
+    <div class="claude-note" id="claude-note" style="display:none;">
+      <div class="who">การวิเคราะห์จาก CLAUDE</div>
+      <p id="claude-note-text"></p>
+    </div>
+    <div class="meters" id="meters"></div>
+    <div class="report"><h3>รายงานผลกระทบ</h3><ul id="report-list"></ul></div>
+    <div class="section-title">ตารางเปรียบเทียบทุกกลุ่ม</div>
+    <div class="cmp-wrap"><table class="cmp" id="cmp-table"></table></div>
+    <div class="actions">
+      <button class="btn btn-ghost" id="btn-retry">ลองใหม่อีกครั้ง</button>
+      <button class="btn btn-ghost" id="btn-refresh-cmp">รีเฟรชตารางเปรียบเทียบ</button>
+    </div>
+  </section>
+</div>
+
+<div id="ticker-bar">
+  <div class="lamp">LIVE</div>
+  <div class="ticker-track"><div class="ticker-content" id="ticker-content"><span>สถานะ: ยังไม่มีการตัดสินใจ — เริ่มปรับตัวเลื่อนและพิมพ์วิธีการเพื่อดูสัญญาณเตือนแบบเรียลไทม์</span></div></div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  const DEPARTMENTS = [
+    {id:'eng',    abbr:'EN', name:'วิศวกรรม / พัฒนาผลิตภัณฑ์', count:500, ops:30, pr:5},
+    {id:'trust',  abbr:'TS', name:'Trust & Safety (ดูแลความปลอดภัยเนื้อหา)', count:180, ops:15, pr:35},
+    {id:'sre',    abbr:'SR', name:'โครงสร้างพื้นฐาน / SRE', count:120, ops:35, pr:5},
+    {id:'sales',  abbr:'SA', name:'ขายและโฆษณา', count:280, ops:5,  pr:15},
+    {id:'support',abbr:'CS', name:'บริการลูกค้า', count:140, ops:5,  pr:20},
+    {id:'hr',     abbr:'HR', name:'ฝ่ายบุคคล', count:90,  ops:3,  pr:5},
+    {id:'legal',  abbr:'LG', name:'กฎหมายและนโยบาย', count:70,  ops:2,  pr:5},
+  ];
+  const OPS_TOTAL = DEPARTMENTS.reduce((s,d)=>s+d.ops,0);
+  const PR_TOTAL  = DEPARTMENTS.reduce((s,d)=>s+d.pr,0);
+  const TOTAL_COUNT = DEPARTMENTS.reduce((s,d)=>s+d.count,0);
+
+  const CHIP_EXAMPLES = [
+    'ส่งอีเมลแจ้งเลิกจ้างตอนเที่ยงคืน ตัดสิทธิ์เข้าระบบทันที ไม่แจ้งล่วงหน้า',
+    'แจ้งล่วงหน้า 60 วันตามกฎหมายแรงงาน จ่ายค่าชดเชยเต็มจำนวน มีช่วงเปลี่ยนผ่าน',
+    'ให้หัวหน้าทีมนัดคุย 1:1 อธิบายเหตุผลเป็นรายบุคคล พร้อมช่วยหางานใหม่',
+    'ใช้ระบบสุ่มคัดชื่อออกอย่างเร่งรีบ แล้วเรียกกลับบางคนภายหลังเมื่อพบว่าตัดผิด',
+  ];
+
+  const state = {
+    team: '',
+    cuts: Object.fromEntries(DEPARTMENTS.map(d=>[d.id,0])),
+    methodText: '',
+    verdictText: '',
+    lastScores: null,
+  };
+
+  const $ = (sel,root=document)=>root.querySelector(sel);
+  const $$ = (sel,root=document)=>Array.from(root.querySelectorAll(sel));
+
+  function showScreen(id){
+    $$('.screen').forEach(s=>s.classList.remove('active'));
+    $('#'+id).classList.add('active');
+    window.scrollTo({top:0,behavior:'smooth'});
+  }
+
+  function renderDeptGrid(){
+    const grid = $('#dept-grid');
+    grid.innerHTML = DEPARTMENTS.map((d,i)=>`
+      <div class="dept-card">
+        <div class="dept-docket">DOCKET-0${i+1}</div>
+        <div class="dept-top"><div class="badge">${d.abbr}</div><div class="dept-name">${d.name}</div></div>
+        <div class="dept-count">พนักงานปัจจุบัน: <b>${d.count}</b> คน</div>
+        <input type="range" min="0" max="${d.count}" value="0" step="1" data-id="${d.id}" aria-label="ปลดพนักงานฝ่าย ${d.name}">
+        <div class="dept-readout">
+          <span>เหลือ: <span class="pctval" id="remain-${d.id}">${d.count}</span> คน</span>
+          <span class="cutval">ปลดออก: <span id="cutval-${d.id}">0</span> (<span id="pctval-${d.id}">0%</span>)</span>
+        </div>
+      </div>
+    `).join('');
+
+    $$('input[type=range]', grid).forEach(inp=>{
+      inp.addEventListener('input', e=>{
+        const id = e.target.dataset.id;
+        const val = parseInt(e.target.value,10);
+        state.cuts[id] = val;
+        const dept = DEPARTMENTS.find(d=>d.id===id);
+        $('#cutval-'+id).textContent = val;
+        $('#pctval-'+id).textContent = Math.round((val/dept.count)*100)+'%';
+        $('#remain-'+id).textContent = dept.count - val;
+        updateSummary();
+        updateTicker();
+      });
+    });
+  }
+
+  function renderChips(){
+    $('#chip-row').innerHTML = CHIP_EXAMPLES.map((t,i)=>`<div class="chip" data-i="${i}">ตัวอย่าง ${i+1}</div>`).join('');
+    $$('.chip').forEach(c=>{
+      c.addEventListener('click', ()=>{
+        $('#methodText').value = CHIP_EXAMPLES[c.dataset.i];
+        state.methodText = CHIP_EXAMPLES[c.dataset.i];
+        $('#charcount').textContent = state.methodText.length;
+        updateSummary();
+        updateTicker();
+      });
+    });
+  }
+
+  function totalCut(){ return DEPARTMENTS.reduce((s,d)=>s+(state.cuts[d.id]||0),0); }
+
+  function updateSummary(){
+    const tc = totalCut();
+    $('#sum-cut').textContent = tc;
+    $('#sum-pct').textContent = Math.round((tc/TOTAL_COUNT)*100)+'%';
+    $('#btn-confirm').disabled = !(tc>0 && state.methodText.trim().length>=10);
+  }
+
+  function buildWarnings(){
+    const w = [];
+    const pct = id => { const d = DEPARTMENTS.find(d=>d.id===id); return (state.cuts[id]||0)/d.count; };
+    const txt = state.methodText;
+    if(pct('trust')>0.5) w.push('⚠ Trust & Safety ถูกตัดกว่าครึ่ง — คาดว่าเนื้อหาอันตราย/สแปมจะเพิ่มขึ้นบนแพลตฟอร์ม');
+    if(pct('sre')>0.5) w.push('⚠ ทีม Infrastructure เหลือน้อย — ความเสี่ยงระบบล่มช่วงพีคเพิ่มขึ้นมาก');
+    if(pct('eng')>0.6) w.push('⚠ ทีมวิศวกรรมหลักถูกตัดหนัก — ฟีเจอร์ใหม่และการแก้บั๊กจะช้าลงอย่างมาก');
+    if(pct('legal')>0.5) w.push('⚠ ฝ่ายกฎหมายเหลือน้อย — บริษัทอาจรับมือคดีความไม่ทัน');
+    if(pct('support')>0.6) w.push('⚠ ฝ่ายบริการลูกค้าถูกตัดหนัก — เวลาตอบกลับผู้ใช้จะยาวขึ้นมาก');
+    if(pct('sales')>0.6) w.push('⚠ ฝ่ายขายโฆษณาถูกตัดหนัก — ความสัมพันธ์กับผู้ลงโฆษณารายใหญ่อาจสั่นคลอน');
+    if(/กลางดึก|เที่ยงคืน|ทันที|ไม่แจ้งล่วงหน้า|ตัดระบบ/.test(txt)) w.push('⚠ คำอธิบายวิธีการมีลักษณะกะทันหัน — Claude อาจให้คะแนนความเสี่ยงกฎหมาย/ภาพลักษณ์สูง');
+    if(/สุ่ม|เรียกกลับ|ตัดผิด|ผิดคน/.test(txt)) w.push('⚠⚠ คำอธิบายมีลักษณะสุ่ม/วุ่นวาย — เสี่ยงดูไร้ระเบียบต่อสาธารณะ');
+    if(/แจ้งล่วงหน้า|60 วัน|ชดเชย|ค่าชดเชย/.test(txt)) w.push('✓ คำอธิบายมีสัญญาณของการปฏิบัติตามกฎหมายแรงงาน');
+    if(w.length===0) w.push('สถานะ: ยังไม่มีสัญญาณเตือนชัดเจน — ปรับตัวเลื่อนหรือพิมพ์วิธีการเพื่อดูผลกระทบ');
+    return w;
+  }
+
+  function updateTicker(){
+    $('#ticker-content').innerHTML = buildWarnings().map(t=>`<span>${t}</span>`).join('');
+  }
+
+  function summarizeCuts(){
+    return DEPARTMENTS.map(d=>{
+      const c = state.cuts[d.id]||0;
+      if(c===0) return null;
+      return `${d.name}: ปลดออก ${c}/${d.count} คน (${Math.round((c/d.count)*100)}%)`;
+    }).filter(Boolean).join('\n');
+  }
+
+  async function judgeMethod(){
+    const res = await fetch('/api/judge', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ cutsSummary: summarizeCuts(), methodText: state.methodText }),
+    });
+    const data = await res.json();
+    if(!res.ok){ throw new Error(data.error || 'judge failed'); }
+    return data; // { ops, pr, legal, morale, verdict }
+  }
+
+  function clamp(v){ return Math.max(0, Math.min(100, Math.round(v))); }
+
+  function computeScores(mod){
+    let opsRaw=0, prRaw=0, legalCutPct=0;
+    const tc = totalCut();
+    DEPARTMENTS.forEach(d=>{
+      const cut = state.cuts[d.id]||0;
+      const p = cut/d.count;
+      opsRaw += p*d.ops;
+      prRaw += p*d.pr;
+      if(d.id==='legal') legalCutPct = p;
+    });
+    const overallPct = tc/TOTAL_COUNT;
+    let ops = (opsRaw/OPS_TOTAL)*100 + mod.ops;
+    let pr  = (prRaw/PR_TOTAL)*100 + mod.pr;
+    ops = clamp(ops); pr = clamp(pr);
+    let legal = overallPct*30 + mod.legal + (legalCutPct>0.4 ? 15 : 0);
+    legal = clamp(legal);
+    let morale = 100 - overallPct*40 - mod.morale - (ops>70 ? 10 : 0);
+    morale = clamp(morale);
+    const savings = clamp(overallPct*100);
+    const crisisIndex = clamp((ops+legal+pr)/3*0.7 + (100-morale)*0.3);
+    return {ops, pr, legal, morale, savings, crisisIndex, totalCut:tc, overallPct};
+  }
+
+  function gradeFor(crisisIndex){
+    if(crisisIndex<30) return {label:'มั่นคง (STABLE)', color:'var(--good)'};
+    if(crisisIndex<55) return {label:'เริ่มเสี่ยง (AT RISK)', color:'var(--warn)'};
+    if(crisisIndex<75) return {label:'วิกฤต (CRISIS)', color:'var(--danger)'};
+    return {label:'หายนะ (CATASTROPHIC)', color:'var(--danger)'};
+  }
+
+  function buildReport(s){
+    const list = [];
+    if(s.ops>=70) list.push('ระบบล่มบ่อยและบั๊กสะสม เหตุการณ์แบบเดียวกับที่ Twitter เคยเผชิญหลังตัดทีมโครงสร้างพื้นฐานจำนวนมาก มีโอกาสเกิดซ้ำ');
+    else if(s.ops>=40) list.push('ทีมที่เหลือต้องทำงานหนักขึ้นมากเพื่อพยุงระบบ ความเสี่ยงทางเทคนิคเริ่มสะสมและอาจกระทบ SLA');
+    else list.push('ระบบยังอยู่ในระดับที่ทีมที่เหลือดูแลได้ทั่วถึง ความเสี่ยงด้านเทคนิคต่ำ');
+    if(s.pr>=70) list.push('ความเสียหายต่อภาพลักษณ์สูงมาก คาดว่าจะเป็นกระแสวิพากษ์วิจารณ์บนโซเชียล และผู้ลงโฆษณารายใหญ่อาจระงับงบชั่วคราว');
+    else if(s.pr>=40) list.push('มีความเสี่ยงที่สื่อและผู้ใช้จะตั้งคำถามต่อแนวทางบริหาร แต่ยังไม่ถึงขั้นวิกฤต');
+    else list.push('ภาพลักษณ์องค์กรยังควบคุมได้ ไม่มีสัญญาณกระแสลบรุนแรง');
+    if(s.legal>=70) list.push('ความเสี่ยงด้านกฎหมายอยู่ในระดับสูง มีโอกาสถูกฟ้องร้องแบบกลุ่ม (class action) จากการไม่ปฏิบัติตามกฎหมายแรงงาน');
+    else if(s.legal>=40) list.push('มีความเสี่ยงทางกฎหมายระดับปานกลาง ควรตรวจสอบขั้นตอนการเลิกจ้างให้รัดกุมขึ้น');
+    else list.push('กระบวนการเลิกจ้างสอดคล้องกับข้อกฎหมายในระดับที่ปลอดภัย');
+    if(s.morale<=30) list.push('ขวัญกำลังใจพนักงานที่เหลือตกต่ำมาก มีความเสี่ยงสูงที่พนักงานฝีมือดีจะลาออกเองตามมาเป็นระลอก');
+    else if(s.morale<=60) list.push('พนักงานที่เหลือเริ่มไม่มั่นใจต่อทิศทางองค์กร ควรสื่อสารแผนงานให้ชัดเจนเพื่อรักษาคนเก่ง');
+    else list.push('พนักงานที่เหลือยังคงมีความไว้วางใจต่อผู้บริหารในระดับที่ดี');
+    list.push(`ประหยัดต้นทุนค่าจ้างระยะสั้นได้ประมาณ ${s.savings}% ของฐานเงินเดือนรวม — แต่ควรชั่งน้ำหนักกับความเสียหายด้านอื่นข้างต้น`);
+    return list;
+  }
+
+  function renderResults(s){
+    const shortMethod = state.methodText.length>60 ? state.methodText.slice(0,60)+'…' : state.methodText;
+    $('#res-teamline').textContent = `ทีม: ${state.team || '(ไม่ระบุชื่อ)'}  •  วิธีการ: "${shortMethod}"  •  ปลดออก ${s.totalCut} คน (${Math.round(s.overallPct*100)}%)`;
+    const g = gradeFor(s.crisisIndex);
+    const grade = $('#res-grade');
+    grade.textContent = g.label;
+    grade.style.color = g.color;
+    $('#res-summary').textContent = `ดัชนีวิกฤตรวม (Crisis Index): ${s.crisisIndex}/100 — คำนวณจากความเสี่ยงระบบ กฎหมาย ภาพลักษณ์ และขวัญกำลังใจพนักงานที่เหลือ (รวมคะแนนที่ Claude ประเมินจากวิธีการที่ทีมอธิบาย)`;
+    if(state.verdictText){
+      $('#claude-note').style.display = 'block';
+      $('#claude-note-text').textContent = state.verdictText;
+    } else {
+      $('#claude-note').style.display = 'none';
+    }
+    const meters = [
+      {label:'ความเสี่ยงด้านระบบ/เทคนิค', val:s.ops, invert:true},
+      {label:'ความเสี่ยงด้านกฎหมาย', val:s.legal, invert:true},
+      {label:'ความเสียหายด้านภาพลักษณ์/โซเชียล', val:s.pr, invert:true},
+      {label:'ขวัญกำลังใจพนักงานที่เหลือ', val:s.morale, invert:false},
+      {label:'เงินที่ประหยัดได้ระยะสั้น', val:s.savings, invert:false},
+    ];
+    $('#meters').innerHTML = meters.map(m=>{
+      const bad = m.invert ? m.val : (100-m.val);
+      const color = bad>=70 ? 'var(--danger)' : bad>=40 ? 'var(--warn)' : 'var(--good)';
+      return `<div class="meter-card">
+        <div class="meter-label"><span>${m.label}</span><span class="val">${m.val}/100</span></div>
+        <div class="meter-track"><div class="meter-fill" style="width:${m.val}%;background:${color};"></div></div>
+      </div>`;
+    }).join('');
+    $('#report-list').innerHTML = buildReport(s).map(t=>`<li>${t}</li>`).join('');
+  }
+
+  async function saveResult(s){
+    try{
+      await fetch('/api/submit', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({
+          team: state.team || '(ไม่ระบุชื่อ)',
+          method: state.methodText,
+          cuts: state.cuts,
+          totalCut: s.totalCut,
+          pct: Math.round(s.overallPct*100),
+          ops: s.ops, legal: s.legal, pr: s.pr, morale: s.morale,
+          crisisIndex: s.crisisIndex,
+          verdict: state.verdictText,
+        }),
+      });
+    }catch(err){ console.error('บันทึกผลไม่สำเร็จ', err); }
+  }
+
+  async function loadComparison(){
+    const table = $('#cmp-table');
+    table.innerHTML = '<tr><td style="color:var(--dim);padding:10px;">กำลังโหลด...</td></tr>';
+    try{
+      const res = await fetch('/api/leaderboard');
+      const data = await res.json();
+      const rows = data.rows || [];
+      if(rows.length===0){
+        table.innerHTML = '<tr><td style="color:var(--dim);padding:10px;">ยังไม่มีกลุ่มใดส่งผลลัพธ์</td></tr>';
+        return;
+      }
+      table.innerHTML = `
+        <tr><th>ทีม</th><th>วิธีการ (ย่อ)</th><th>ปลดออก</th><th>ระบบ</th><th>กฎหมาย</th><th>ภาพลักษณ์</th><th>ขวัญกำลังใจ</th><th>Crisis Index</th></tr>
+        ${rows.map(r=>`
+          <tr>
+            <td>${r.team}</td>
+            <td>${r.methodPreview}${r.methodPreview && r.methodPreview.length>=60?'…':''}</td>
+            <td>${r.totalCut} (${r.pct}%)</td>
+            <td>${r.ops}</td>
+            <td>${r.legal}</td>
+            <td>${r.pr}</td>
+            <td>${r.morale}</td>
+            <td class="${r.crisisIndex>=55?'hi':''}">${r.crisisIndex}</td>
+          </tr>`).join('')}
+      `;
+    }catch(err){
+      table.innerHTML = '<tr><td style="color:var(--danger);padding:10px;">โหลดตารางเปรียบเทียบไม่สำเร็จ</td></tr>';
+      console.error(err);
+    }
+  }
+
+  $('#btn-start').addEventListener('click', ()=>{
+    state.team = $('#teamName').value.trim();
+    renderDeptGrid();
+    renderChips();
+    updateSummary();
+    updateTicker();
+    showScreen('screen-dashboard');
+  });
+
+  $('#methodText').addEventListener('input', e=>{
+    state.methodText = e.target.value;
+    $('#charcount').textContent = state.methodText.length;
+    updateSummary();
+    updateTicker();
+  });
+
+  $('#btn-view-compare-intro').addEventListener('click', ()=>{
+    showScreen('screen-results');
+    $('#res-teamline').textContent = '';
+    $('#res-grade').textContent = '';
+    $('#res-summary').textContent = '';
+    $('#claude-note').style.display = 'none';
+    $('#meters').innerHTML = '';
+    $('#report-list').innerHTML = '';
+    loadComparison();
+  });
+
+  $('#btn-confirm').addEventListener('click', async ()=>{
+    const btn = $('#btn-confirm');
+    const status = $('#judge-status');
+    btn.disabled = true;
+    status.className = 'judge-status loading';
+    status.innerHTML = '<span class="spin"></span>Claude กำลังวิเคราะห์วิธีการของทีมคุณ...';
+    try{
+      const judged = await judgeMethod();
+      state.verdictText = judged.verdict;
+      const s = computeScores(judged);
+      state.lastScores = s;
+      renderResults(s);
+      await saveResult(s);
+      await loadComparison();
+      status.className = 'judge-status ok';
+      status.textContent = 'ประเมินสำเร็จ';
+      showScreen('screen-results');
+    }catch(err){
+      console.error(err);
+      status.className = 'judge-status error';
+      status.textContent = 'เกิดข้อผิดพลาด: ' + (err.message || 'เรียก Claude ไม่สำเร็จ') + ' — ลองใหม่อีกครั้ง';
+    }finally{
+      btn.disabled = false;
+    }
+  });
+
+  $('#btn-retry').addEventListener('click', ()=>{
+    state.cuts = Object.fromEntries(DEPARTMENTS.map(d=>[d.id,0]));
+    state.methodText = '';
+    state.verdictText = '';
+    renderDeptGrid();
+    renderChips();
+    $('#methodText').value = '';
+    $('#charcount').textContent = '0';
+    $('#judge-status').textContent = '';
+    $('#judge-status').className = 'judge-status';
+    updateSummary();
+    updateTicker();
+    showScreen('screen-dashboard');
+  });
+
+  $('#btn-refresh-cmp').addEventListener('click', loadComparison);
+
+})();
+</script>
+</body>
+</html>
