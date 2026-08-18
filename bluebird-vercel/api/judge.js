@@ -44,42 +44,74 @@ module.exports = async (req, res) => {
 
     const userMsg = `รายละเอียดการปลดพนักงานของทีม:\n${(cutsSummary || "").slice(0, 2000)}\n\nคำอธิบายวิธีการแจ้งเลิกจ้างที่ทีมเขียน:\n"""${methodText.trim().slice(0, 1500)}"""`;
 
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
-      },
-      body: JSON.stringify({
-        model: "claude-sonnet-5",
-        max_tokens: 1000,
-        system: SYSTEM_PROMPT,
-        messages: [{ role: "user", content: userMsg }],
-      }),
-    });
+    // Ask Claude once, with an assistant-turn "prefill" of "{" — this steers the
+    // model to continue directly as a JSON object instead of adding preamble text,
+    // which is what caused "Could not parse model response" before.
+    async function askClaude() {
+      const response = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": apiKey,
+          "anthropic-version": "2023-06-01",
+        },
+        body: JSON.stringify({
+          model: "claude-sonnet-5",
+          max_tokens: 1000,
+          system: SYSTEM_PROMPT,
+          messages: [
+            { role: "user", content: userMsg },
+            { role: "assistant", content: "{" },
+          ],
+        }),
+      });
 
-    if (!response.ok) {
-      const errText = await response.text();
-      console.error("Anthropic API error:", response.status, errText);
-      res.status(502).json({ error: "Anthropic API request failed" });
-      return;
+      if (!response.ok) {
+        const errText = await response.text();
+        console.error("Anthropic API error:", response.status, errText);
+        throw new Error("Anthropic API request failed");
+      }
+
+      const data = await response.json();
+      const textBlock = (data.content || [])
+        .filter((b) => b.type === "text")
+        .map((b) => b.text)
+        .join("\n");
+
+      // The prefill "{" is not echoed back in the response, so add it back,
+      // then defensively slice out just the {...} object in case anything
+      // else slipped in before/after it.
+      let raw = "{" + textBlock;
+      raw = raw.replace(/```json|```/g, "");
+      const start = raw.indexOf("{");
+      const end = raw.lastIndexOf("}");
+      if (start === -1 || end === -1 || end < start) {
+        console.error("No JSON object found in Claude response:", textBlock);
+        throw new Error("No JSON object in model response");
+      }
+      return JSON.parse(raw.slice(start, end + 1));
     }
 
-    const data = await response.json();
-    const textBlock = (data.content || [])
-      .filter((b) => b.type === "text")
-      .map((b) => b.text)
-      .join("\n");
-    const clean = textBlock.replace(/```json|```/g, "").trim();
-
     let parsed;
+    let usedFallback = false;
     try {
-      parsed = JSON.parse(clean);
-    } catch (e) {
-      console.error("Failed to parse Claude JSON:", clean);
-      res.status(502).json({ error: "Could not parse model response" });
-      return;
+      parsed = await askClaude();
+    } catch (e1) {
+      console.error("Judge attempt 1 failed, retrying once:", e1.message);
+      try {
+        parsed = await askClaude();
+      } catch (e2) {
+        console.error("Judge attempt 2 failed, using neutral fallback:", e2.message);
+        usedFallback = true;
+        parsed = {
+          ops: 0,
+          pr: 0,
+          legal: 0,
+          morale: 0,
+          verdict:
+            "ระบบวิเคราะห์คำอธิบายวิธีการไม่สำเร็จในครั้งนี้ จึงใช้ค่ากลาง (ไม่บวกไม่ลบ) แทนชั่วคราว ลองกด \"ลองใหม่อีกครั้ง\" เพื่อให้ Claude วิเคราะห์ใหม่อีกครั้งเพื่อผลที่แม่นยำกว่านี้",
+        };
+      }
     }
 
     res.status(200).json({
@@ -88,6 +120,7 @@ module.exports = async (req, res) => {
       legal: clampNum(parsed.legal),
       morale: clampNum(parsed.morale),
       verdict: typeof parsed.verdict === "string" ? parsed.verdict.slice(0, 800) : "",
+      fallback: usedFallback,
     });
   } catch (err) {
     console.error(err);
