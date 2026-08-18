@@ -5,12 +5,17 @@
 // /command/arg1/arg2 form).
 
 async function upstash(...args) {
-  const url = process.env.UPSTASH_REDIS_REST_URL;
-  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+  // Vercel KV (created from Vercel's own Storage tab) uses KV_REST_API_URL /
+  // KV_REST_API_TOKEN. A direct Upstash integration uses UPSTASH_REDIS_REST_URL /
+  // UPSTASH_REDIS_REST_TOKEN. Both point to the same kind of REST endpoint
+  // (Vercel KV is Upstash under the hood), so we accept whichever is present.
+  const url = process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL;
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN;
 
   if (!url || !token) {
     throw new Error(
-      "Missing UPSTASH_REDIS_REST_URL / UPSTASH_REDIS_REST_TOKEN environment variables"
+      "Missing Redis REST credentials: set either UPSTASH_REDIS_REST_URL / " +
+      "UPSTASH_REDIS_REST_TOKEN, or KV_REST_API_URL / KV_REST_API_TOKEN"
     );
   }
 
