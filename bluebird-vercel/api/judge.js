@@ -14,7 +14,7 @@ const SYSTEM_PROMPT = `คุณเป็นที่ปรึกษาด้า
 
 ถ้าคำอธิบายที่ได้รับสั้นมาก คลุมเครือ หรือไม่สมเหตุสมผล ให้ประเมินอย่างสมเหตุสมผลที่สุดเท่าที่ทำได้ อย่าปฏิเสธที่จะให้คะแนน
 
-ตอบกลับเป็น JSON เท่านั้น ห้ามมีข้อความอื่นใดๆ นอกเหนือจาก JSON ห้ามใส่ markdown code fence รูปแบบต้องเป็นดังนี้เป๊ะๆ:
+ตอบกลับเป็น JSON เท่านั้น ห้ามมีข้อความอื่นใดๆ นอกเหนือจาก JSON ห้ามมีคำนำ คำอธิบายก่อนหรือหลัง และห้ามใส่ markdown code fence เด็ดขาด คำตอบทั้งหมดของคุณต้องขึ้นต้นด้วยอักขระ { และจบด้วยอักขระ } เท่านั้น รูปแบบต้องเป็นดังนี้เป๊ะๆ:
 {"ops": number, "pr": number, "legal": number, "morale": number, "verdict": "คำอธิบายสั้นๆ ภาษาไทย 2-3 ประโยค ให้เหตุผลโดยอ้างอิงหลักการ HR/กฎหมายแรงงาน/การบริหารภาพลักษณ์ที่เกี่ยวข้อง"}`;
 
 function clampNum(v) {
@@ -44,9 +44,10 @@ module.exports = async (req, res) => {
 
     const userMsg = `รายละเอียดการปลดพนักงานของทีม:\n${(cutsSummary || "").slice(0, 2000)}\n\nคำอธิบายวิธีการแจ้งเลิกจ้างที่ทีมเขียน:\n"""${methodText.trim().slice(0, 1500)}"""`;
 
-    // Ask Claude once, with an assistant-turn "prefill" of "{" — this steers the
-    // model to continue directly as a JSON object instead of adding preamble text,
-    // which is what caused "Could not parse model response" before.
+    // Ask Claude once. We rely on the system prompt's strict "JSON only" instruction
+    // plus defensive extraction below — claude-sonnet-5 rejects assistant-message
+    // prefill ("This model does not support assistant message prefill"), so the
+    // conversation must end with a user message.
     async function askClaude() {
       const response = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
@@ -59,10 +60,7 @@ module.exports = async (req, res) => {
           model: "claude-sonnet-5",
           max_tokens: 1000,
           system: SYSTEM_PROMPT,
-          messages: [
-            { role: "user", content: userMsg },
-            { role: "assistant", content: "{" },
-          ],
+          messages: [{ role: "user", content: userMsg }],
         }),
       });
 
@@ -78,11 +76,9 @@ module.exports = async (req, res) => {
         .map((b) => b.text)
         .join("\n");
 
-      // The prefill "{" is not echoed back in the response, so add it back,
-      // then defensively slice out just the {...} object in case anything
-      // else slipped in before/after it.
-      let raw = "{" + textBlock;
-      raw = raw.replace(/```json|```/g, "");
+      // Defensively slice out just the {...} object in case any preamble or
+      // code fence slipped in before/after it.
+      let raw = textBlock.replace(/```json|```/g, "");
       const start = raw.indexOf("{");
       const end = raw.lastIndexOf("}");
       if (start === -1 || end === -1 || end < start) {
