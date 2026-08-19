@@ -5,58 +5,65 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>OPERATION BLUEBIRD — Admin</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=Prompt:wght@600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
   :root{
-    --bg:#0e1117; --panel:#171c26; --panel2:#1f2632; --border:#2b3342;
-    --text:#eae7de; --dim:#8891a3; --danger:#ff5c66; --warn:#f4b942; --good:#43d9b8; --accent:#5b8cff;
-    --mono:'IBM Plex Mono',monospace; --body:'IBM Plex Sans Thai',sans-serif; --display:'Prompt',sans-serif;
+    --bg:#ffffff; --panel:#ffffff; --panel2:#f7f9f9; --border:#eff3f4;
+    --text:#0f1419; --dim:#536471; --danger:#f4212e; --warn:#ffad1f; --good:#00ba7c; --accent:#1d9bf0; --accent-dark:#1a8cd8;
+    --mono:'Inter',sans-serif; --body:'IBM Plex Sans Thai',sans-serif; --display:'Inter',sans-serif;
   }
   *{box-sizing:border-box;}
   html,body{margin:0;background:var(--bg);color:var(--text);font-family:var(--body);min-height:100vh;}
   .wrap{max-width:1100px;margin:0 auto;padding:28px 20px 60px;}
-  .masthead{display:flex;align-items:baseline;justify-content:space-between;gap:12px;border-bottom:2px solid var(--border);padding-bottom:14px;margin-bottom:26px;flex-wrap:wrap;}
-  .brand{font-family:var(--display);font-weight:800;font-size:22px;}
+  .masthead{display:flex;align-items:center;justify-content:space-between;gap:12px;border-bottom:1px solid var(--border);padding-bottom:14px;margin-bottom:26px;flex-wrap:wrap;}
+  .brand{font-family:var(--display);font-weight:800;font-size:20px;letter-spacing:-.2px;}
   .brand span{color:var(--accent);}
-  .tag{font-family:var(--mono);font-size:12px;color:var(--dim);letter-spacing:1px;}
+  .tag{font-family:var(--mono);font-size:12px;color:var(--dim);letter-spacing:.2px;}
 
-  .login-box{max-width:380px;margin:60px auto;background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:28px;}
-  .login-box h2{font-family:var(--display);margin:0 0 14px;font-size:19px;}
-  .login-box input{width:100%;background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:12px 14px;color:var(--text);font-family:var(--mono);font-size:14px;margin-bottom:12px;}
-  .login-box input:focus{outline:2px solid var(--accent);border-color:var(--accent);}
-  .btn{cursor:pointer;border:none;border-radius:8px;font-family:var(--display);font-weight:600;font-size:14px;padding:11px 20px;background:var(--accent);color:#0b0e14;}
-  .btn:hover{filter:brightness(1.12);}
-  .btn-ghost{background:transparent;border:1px solid var(--border);color:var(--text);}
-  .btn-danger{background:var(--danger);color:#1a0507;}
-  .err{color:var(--danger);font-family:var(--mono);font-size:12.5px;min-height:16px;margin-bottom:4px;}
+  .login-box{max-width:380px;margin:60px auto;background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:28px;}
+  .login-box h2{font-family:var(--display);margin:0 0 14px;font-size:19px;font-weight:800;}
+  .login-box input{width:100%;background:#fff;border:1px solid var(--border);border-radius:10px;padding:12px 14px;color:var(--text);font-family:var(--mono);font-size:14px;margin-bottom:12px;}
+  .login-box input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(29,155,240,.15);}
+  .btn{cursor:pointer;border:none;border-radius:9999px;font-family:var(--display);font-weight:700;font-size:14px;padding:11px 20px;background:var(--accent);color:#ffffff;}
+  .btn:hover{background:var(--accent-dark);}
+  .btn-ghost{background:#ffffff;border:1px solid var(--border);color:var(--text);}
+  .btn-ghost:hover{background:var(--panel2);}
+  .btn-danger{background:var(--danger);color:#ffffff;}
+  .btn-danger:hover{filter:brightness(1.08);}
+  .err{color:var(--danger);font-family:var(--mono);font-size:12.5px;font-weight:600;min-height:16px;margin-bottom:4px;}
 
   .toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:18px;}
   .stat-strip{display:flex;gap:10px;flex-wrap:wrap;}
-  .stat{background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:8px 14px;font-family:var(--mono);font-size:12.5px;color:var(--dim);}
-  .stat b{color:var(--text);font-size:15px;display:block;}
+  .stat{background:var(--panel2);border:1px solid var(--border);border-radius:10px;padding:8px 14px;font-family:var(--mono);font-size:12.5px;color:var(--dim);}
+  .stat b{color:var(--accent);font-size:16px;font-weight:800;display:block;}
 
   .cards{display:flex;flex-direction:column;gap:12px;}
-  .card{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:16px 18px;}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:16px 18px;}
   .card-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:10px;}
-  .team-name{font-family:var(--display);font-weight:700;font-size:17px;}
+  .team-name{font-family:var(--display);font-weight:800;font-size:17px;}
   .ts{font-family:var(--mono);font-size:11px;color:var(--dim);}
-  .grade-pill{font-family:var(--mono);font-size:11px;font-weight:700;border-radius:20px;padding:4px 10px;white-space:nowrap;}
-  .method-text{background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-size:13.5px;line-height:1.6;color:#d8dce4;margin:8px 0;}
+  .grade-pill{font-family:var(--mono);font-size:11px;font-weight:800;border-radius:999px;padding:4px 10px;white-space:nowrap;}
+  .method-text{background:var(--panel2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;font-size:13.5px;line-height:1.6;color:var(--text);margin:8px 0;}
   .cuts-row{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0;}
-  .cut-chip{font-family:var(--mono);font-size:11px;background:var(--panel2);border:1px solid var(--border);border-radius:6px;padding:3px 8px;color:var(--dim);}
+  .cut-chip{font-family:var(--mono);font-size:11px;background:var(--panel2);border:1px solid var(--border);border-radius:999px;padding:3px 10px;color:var(--dim);}
   .cut-chip b{color:var(--text);}
   .score-row{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;}
-  .score-pill{font-family:var(--mono);font-size:12px;border-radius:6px;padding:5px 10px;background:var(--panel2);border:1px solid var(--border);}
-  .score-pill b{margin-left:4px;}
-  .verdict-box{margin-top:10px;border-left:3px solid var(--accent);padding-left:10px;font-size:13px;color:var(--dim);line-height:1.6;}
+  .score-pill{font-family:var(--mono);font-size:12px;font-weight:600;border-radius:8px;padding:5px 10px;background:rgba(29,155,240,.08);border:1px solid rgba(29,155,240,.2);color:var(--dim);}
+  .score-pill b{margin-left:4px;color:var(--accent);}
+  .verdict-box{margin-top:10px;border-left:3px solid var(--accent);background:rgba(29,155,240,.05);padding:8px 10px;font-size:13px;color:var(--text);line-height:1.6;border-radius:0 8px 8px 0;}
 
-  .empty{color:var(--dim);font-family:var(--mono);font-size:13px;padding:30px;text-align:center;background:var(--panel);border:1px dashed var(--border);border-radius:10px;}
+  .empty{color:var(--dim);font-family:var(--mono);font-size:13px;padding:30px;text-align:center;background:var(--panel2);border:1px dashed var(--border);border-radius:16px;}
 </style>
 </head>
 <body>
 <div class="wrap">
   <div class="masthead">
-    <div class="brand">OPERATION <span>BLUEBIRD</span> — ADMIN</div>
+    <div class="brand" style="display:flex;align-items:center;gap:8px;">
+      <svg width="24" height="24" viewBox="0 0 26 26" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <path d="M23.5 6.2c-.9.4-1.8.7-2.8.8 1-.6 1.8-1.6 2.2-2.8-1 .6-2 1-3.1 1.2-.9-1-2.2-1.6-3.6-1.6-2.7 0-4.9 2.2-4.9 4.9 0 .4 0 .8.1 1.1-4.1-.2-7.7-2.2-10.1-5.1-.4.7-.7 1.6-.7 2.5 0 1.7.9 3.2 2.2 4.1-.8 0-1.6-.2-2.2-.6v.1c0 2.4 1.7 4.4 3.9 4.8-.4.1-.8.2-1.3.2-.3 0-.6 0-.9-.1.6 2 2.4 3.4 4.5 3.4-1.7 1.3-3.7 2.1-6 2.1-.4 0-.8 0-1.2-.1 2.1 1.4 4.7 2.2 7.4 2.2 8.9 0 13.7-7.4 13.7-13.7v-.6c.9-.7 1.7-1.5 2.3-2.5z" fill="#1D9BF0"/>
+      </svg>
+      OPERATION <span>BLUEBIRD</span> — ADMIN
+    </div>
     <div class="tag">INSTRUCTOR VIEW</div>
   </div>
 
