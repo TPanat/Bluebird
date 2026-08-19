@@ -54,7 +54,39 @@
   .dept-docket{font-family:var(--mono);font-size:10.5px;color:var(--dim);letter-spacing:.5px;margin-bottom:2px;}
   .dept-count{font-family:var(--mono);font-size:12px;color:var(--dim);margin-bottom:10px;}
   .dept-count b{color:var(--text);}
-  input[type=range]{width:100%;accent-color:var(--accent);cursor:pointer;height:22px;}
+  .dept-control{display:flex;align-items:center;gap:10px;}
+  input[type=range]{
+    -webkit-appearance:none; appearance:none;
+    flex:1; height:22px; background:transparent; cursor:pointer; margin:0;
+  }
+  input[type=range]::-webkit-slider-runnable-track{
+    height:6px; border-radius:999px;
+    background:linear-gradient(to right, var(--accent) 0%, var(--accent) var(--range-progress,0%), var(--panel2) var(--range-progress,0%), var(--panel2) 100%);
+  }
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none; appearance:none;
+    width:18px; height:18px; border-radius:50%;
+    background:var(--accent); border:3px solid #fff;
+    box-shadow:0 1px 3px rgba(15,20,25,.25);
+    margin-top:-6px; cursor:pointer;
+  }
+  input[type=range]::-moz-range-track{ height:6px; border-radius:999px; background:var(--panel2); }
+  input[type=range]::-moz-range-progress{ height:6px; border-radius:999px; background:var(--accent); }
+  input[type=range]::-moz-range-thumb{
+    width:18px; height:18px; border-radius:50%;
+    background:var(--accent); border:3px solid #fff;
+    box-shadow:0 1px 3px rgba(15,20,25,.25); cursor:pointer;
+  }
+  input[type=range]:focus{ outline:none; }
+  input[type=range]:focus::-webkit-slider-thumb{ box-shadow:0 0 0 4px rgba(29,155,240,.25); }
+  input[type=range]:focus::-moz-range-thumb{ box-shadow:0 0 0 4px rgba(29,155,240,.25); }
+  input.dept-number{
+    width:64px; flex:0 0 auto; background:#fff; border:1px solid var(--border);
+    border-radius:8px; padding:6px 8px; color:var(--text); font-family:var(--mono);
+    font-weight:700; font-size:13px; text-align:center;
+  }
+  input.dept-number:focus{ outline:none; border-color:var(--accent); box-shadow:0 0 0 3px rgba(29,155,240,.15); }
+  input.dept-number::-webkit-inner-spin-button{ opacity:1; }
   .dept-readout{display:flex;justify-content:space-between;font-family:var(--mono);font-size:12px;margin-top:8px;}
   .dept-readout .cutval{color:var(--danger);font-weight:700;}
   .dept-readout .pctval{color:var(--dim);}
@@ -239,7 +271,10 @@
         <div class="dept-docket">DOCKET-0${i+1}</div>
         <div class="dept-top"><div class="badge">${d.abbr}</div><div class="dept-name">${d.name}</div></div>
         <div class="dept-count">พนักงานปัจจุบัน: <b>${d.count}</b> คน</div>
-        <input type="range" min="0" max="${d.count}" value="0" step="1" data-id="${d.id}" aria-label="ปลดพนักงานฝ่าย ${d.name}">
+        <div class="dept-control">
+          <input type="range" class="dept-slider" min="0" max="${d.count}" value="0" step="1" data-id="${d.id}" aria-label="ปลดพนักงานฝ่าย ${d.name}">
+          <input type="number" class="dept-number" min="0" max="${d.count}" value="0" data-id="${d.id}" aria-label="พิมพ์จำนวนที่จะปลดพนักงานฝ่าย ${d.name}">
+        </div>
         <div class="dept-readout">
           <span>เหลือ: <span class="pctval" id="remain-${d.id}">${d.count}</span> คน</span>
           <span class="cutval">ปลดออก: <span id="cutval-${d.id}">0</span> (<span id="pctval-${d.id}">0%</span>)</span>
@@ -247,18 +282,32 @@
       </div>
     `).join('');
 
-    $$('input[type=range]', grid).forEach(inp=>{
-      inp.addEventListener('input', e=>{
-        const id = e.target.dataset.id;
-        const val = parseInt(e.target.value,10);
-        state.cuts[id] = val;
-        const dept = DEPARTMENTS.find(d=>d.id===id);
-        $('#cutval-'+id).textContent = val;
-        $('#pctval-'+id).textContent = Math.round((val/dept.count)*100)+'%';
-        $('#remain-'+id).textContent = dept.count - val;
-        updateSummary();
-        updateTicker();
-      });
+    function setCut(id, rawVal){
+      const dept = DEPARTMENTS.find(d=>d.id===id);
+      let val = parseInt(rawVal,10);
+      if(isNaN(val)) val = 0;
+      val = Math.max(0, Math.min(dept.count, val));
+      state.cuts[id] = val;
+
+      const pct = Math.round((val/dept.count)*100);
+      const slider = grid.querySelector(`.dept-slider[data-id="${id}"]`);
+      const number = grid.querySelector(`.dept-number[data-id="${id}"]`);
+      slider.value = val;
+      number.value = val;
+      slider.style.setProperty('--range-progress', pct+'%');
+
+      $('#cutval-'+id).textContent = val;
+      $('#pctval-'+id).textContent = pct+'%';
+      $('#remain-'+id).textContent = dept.count - val;
+      updateSummary();
+      updateTicker();
+    }
+
+    $$('.dept-slider', grid).forEach(inp=>{
+      inp.addEventListener('input', e=> setCut(e.target.dataset.id, e.target.value));
+    });
+    $$('.dept-number', grid).forEach(inp=>{
+      inp.addEventListener('input', e=> setCut(e.target.dataset.id, e.target.value));
     });
   }
 
