@@ -123,7 +123,7 @@
   .ticker-content{display:inline-flex;align-items:center;height:100%;font-family:var(--mono);font-weight:600;font-size:12.5px;color:#ffffff;animation:scroll-left 26s linear infinite;padding-left:100%;}
   .ticker-content span{margin-right:40px;}
   @keyframes scroll-left{from{transform:translateX(0);}to{transform:translateX(-100%);}}
-  .verdict{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:24px 26px;margin-bottom:24px;}
+  .verdict{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:24px 26px;margin-bottom:24px;position:relative;overflow:hidden;}
   .grade-art{display:flex;justify-content:center;margin-bottom:12px;}
   .grade-art svg{width:190px;height:auto;max-width:100%;}
   .verdict-grade{font-family:var(--display);font-weight:800;font-size:clamp(24px,4vw,34px);letter-spacing:-.3px;margin-bottom:6px;text-align:center;}
@@ -147,6 +147,45 @@
   table.cmp th{color:var(--dim);font-weight:700;font-size:11.5px;text-transform:uppercase;letter-spacing:.5px;}
   table.cmp td.hi{color:var(--danger);font-weight:800;}
   .cmp-wrap{overflow-x:auto;}
+
+  /* ---------- GIMMICKS ---------- */
+  .exodus-bird{position:absolute;bottom:6px;left:50%;width:16px;height:16px;pointer-events:none;animation:bird-fly 1.7s ease-out forwards;z-index:5;}
+  @keyframes bird-fly{
+    0%{ transform:translate(0,0) scale(.75) rotate(0deg); opacity:0; }
+    12%{ opacity:1; }
+    100%{ transform:translate(var(--bx,20px),-170px) scale(1) rotate(18deg); opacity:0; }
+  }
+
+  .social-panel{display:grid;grid-template-columns:1.6fr 1fr;gap:14px;margin-bottom:24px;align-items:start;}
+  @media (max-width:700px){ .social-panel{grid-template-columns:1fr;} }
+  .tweet-card{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:14px 16px;margin-bottom:10px;display:flex;gap:10px;}
+  .tweet-avatar{width:38px;height:38px;border-radius:50%;flex:0 0 auto;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:14px;font-family:var(--display);}
+  .tweet-body{flex:1;min-width:0;}
+  .tweet-head{display:flex;gap:6px;align-items:baseline;font-size:13.5px;flex-wrap:wrap;}
+  .tweet-name{font-weight:700;color:var(--text);}
+  .tweet-handle,.tweet-time{color:var(--dim);}
+  .tweet-text{margin-top:2px;font-size:14px;line-height:1.5;color:var(--text);word-break:break-word;}
+
+  .trending-box{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:14px 16px;height:fit-content;}
+  .trending-box h4{margin:0 0 10px;font-family:var(--display);font-size:14px;font-weight:800;}
+  .trend-item{padding:8px 0;border-bottom:1px solid var(--border);}
+  .trend-item:last-child{border-bottom:none;}
+  .trend-cat{font-size:11px;color:var(--dim);font-family:var(--mono);}
+  .trend-tag{font-weight:700;font-size:14.5px;color:var(--text);}
+  .trend-count{font-size:11.5px;color:var(--dim);font-family:var(--mono);}
+
+  .confetti-piece{position:absolute;top:-20px;width:8px;height:14px;opacity:.9;animation:confetti-fall linear forwards;}
+  @keyframes confetti-fall{ to{ transform:translateY(110vh) rotate(720deg); opacity:0; } }
+
+  @keyframes screen-shake{
+    0%,100%{transform:translateX(0);}
+    10%{transform:translateX(-6px);} 20%{transform:translateX(6px);}
+    30%{transform:translateX(-6px);} 40%{transform:translateX(6px);}
+    50%{transform:translateX(-4px);} 60%{transform:translateX(4px);}
+    70%{transform:translateX(-3px);} 80%{transform:translateX(3px);}
+    90%{transform:translateX(-1px);}
+  }
+  .shake-effect{animation:screen-shake .5s ease-in-out;}
   @media (max-width:600px){ .wrap{padding:18px 14px 40px;} .briefing{padding:20px;} .summary-bar{position:static;} }
 </style>
 </head>
@@ -231,6 +270,14 @@
     <div class="claude-note" id="claude-note" style="display:none;">
       <div class="who">การวิเคราะห์จาก CLAUDE</div>
       <p id="claude-note-text"></p>
+    </div>
+
+    <div class="social-panel">
+      <div id="tweets-col"></div>
+      <div class="trending-box">
+        <h4>กำลังเป็นที่นิยม</h4>
+        <div id="trending-col"></div>
+      </div>
     </div>
     <div class="meters" id="meters"></div>
     <div class="report"><h3>รายงานผลกระทบ</h3><ul id="report-list"></ul></div>
@@ -565,6 +612,143 @@
     return {label:'หายนะ (CATASTROPHIC)', color:'var(--danger)'};
   }
 
+  function tierFor(crisisIndex){
+    if(crisisIndex<30) return 'stable';
+    if(crisisIndex<55) return 'atRisk';
+    if(crisisIndex<75) return 'crisis';
+    return 'catastrophic';
+  }
+
+  const TWEET_POOL = {
+    stable: [
+      {handle:'@tech_watcher_th', name:'นักข่าวสายเทค', text:'การปรับโครงสร้างรอบนี้ดูมีแบบแผนกว่าที่คิดไว้เยอะ พนักงานที่เหลือยังทำงานได้ปกติ 👏'},
+      {handle:'@hr_pro_th', name:'ที่ปรึกษา HR', text:'ในที่สุดก็มีบริษัทที่ทำ layoff แบบมีความรับผิดชอบสักที ควรเป็นเคสตัวอย่างในห้องเรียน'},
+      {handle:'@stayed_employee', name:'พนักงานที่ยังอยู่', text:'ทีมยังโอเคอยู่ ไม่มีดราม่าอะไรมาก งานเดินต่อได้ปกติ'},
+      {handle:'@market_analyst99', name:'นักวิเคราะห์การลงทุน', text:'นักลงทุนหายใจโล่งขึ้นหน่อย ไม่มีข่าวลบกระหน่ำเหมือนที่กลัวกัน'},
+    ],
+    atRisk: [
+      {handle:'@worried_employee2', name:'พนักงานที่กังวล', text:'บรรยากาศเริ่มตึงๆ ในทีม ไม่รู้จะเป็นไงต่อ 😬'},
+      {handle:'@tech_watcher_th', name:'นักข่าวสายเทค', text:'เริ่มมีคำถามจากพนักงานว่าทำไมการสื่อสารดูไม่ค่อยชัดเจน'},
+      {handle:'@random_user482', name:'ผู้ใช้ทั่วไป', text:'หวังว่าจะไม่จบแบบเดียวกับเคสอื่นๆ ที่เคยเห็นข่าวมา'},
+      {handle:'@hr_pro_th', name:'ที่ปรึกษา HR', text:'สัญญาณเริ่มไม่ดี ควรรีบสื่อสารกับพนักงานที่เหลือให้ชัดเจนกว่านี้'},
+    ],
+    crisis: [
+      {handle:'@exhausted_worker', name:'พนักงานที่เหลืออยู่', text:'ทีมที่เหลือกำลังทำงานหนักมาก ระบบเริ่มมีปัญหาบ่อยขึ้นทุกวัน'},
+      {handle:'@market_analyst99', name:'นักวิเคราะห์การลงทุน', text:'นักลงทุนเริ่มกังวล มูลค่าบริษัทสั่นคลอนหนัก'},
+      {handle:'@advertiser_voice', name:'ฝ่ายการตลาดแบรนด์คู่ค้า', text:'แบรนด์เราขอพิจารณาถอนงบโฆษณาก่อน จนกว่าสถานการณ์จะนิ่งกว่านี้'},
+      {handle:'@tech_watcher_th', name:'นักข่าวสายเทค', text:'นี่มันเริ่มดูคล้ายเคสดังๆ ที่เคยพังมาแล้วเลยนะ'},
+    ],
+    catastrophic: [
+      {handle:'@exhausted_worker', name:'พนักงานที่เหลืออยู่', text:'ทนไม่ไหวแล้ว ขอลาออกดีกว่า 💀'},
+      {handle:'@advertiser_voice', name:'ฝ่ายการตลาดแบรนด์คู่ค้า', text:'แบรนด์เราถอนโฆษณาทั้งหมดแล้ว ไม่มั่นใจในทิศทางบริษัทอีกต่อไป'},
+      {handle:'@market_analyst99', name:'นักวิเคราะห์การลงทุน', text:'เคสนี้อาจถูกใช้สอนในห้องเรียนต่อไปอีกหลายปีว่า "อย่าทำแบบนี้"'},
+      {handle:'@random_user383', name:'ผู้ใช้ทั่วไป', text:'#RIPบริษัท กำลังจะกลายเป็นความจริงแล้วสินะ'},
+    ],
+  };
+
+  const TRENDING_POOL = {
+    stable: ['#โครงสร้างองค์กรมั่นคง', '#HRทำได้ดี', '#ธุรกิจไปต่อ'],
+    atRisk: ['#จับตาดูใกล้ชิด', '#ต้องรอดูสถานการณ์', '#ขวัญกำลังใจพนักงาน'],
+    crisis: ['#บริษัทกำลังจะพัง', '#ระบบล่มอีกแล้ว', '#มีอะไรผิดพลาดไปแล้ว'],
+    catastrophic: ['#หายนะองค์กร', '#RIPบริษัท', '#บทเรียนราคาแพง'],
+  };
+
+  const AVATAR_COLORS = ['#1d9bf0','#00ba7c','#f4212e','#ffad1f','#794bc4','#0f1419'];
+  function colorForHandle(handle){
+    let h = 0;
+    for(let i=0;i<handle.length;i++) h = (h*31 + handle.charCodeAt(i)) % AVATAR_COLORS.length;
+    return AVATAR_COLORS[h];
+  }
+  function shuffle(arr){
+    const a = arr.slice();
+    for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; }
+    return a;
+  }
+
+  function renderTweets(tier){
+    const picks = shuffle(TWEET_POOL[tier]).slice(0,3);
+    $('#tweets-col').innerHTML = picks.map(t=>{
+      const initial = t.handle.replace('@','')[0].toUpperCase();
+      return `<div class="tweet-card">
+        <div class="tweet-avatar" style="background:${colorForHandle(t.handle)};">${initial}</div>
+        <div class="tweet-body">
+          <div class="tweet-head">
+            <span class="tweet-name">${t.name}</span>
+            <span class="tweet-handle">${t.handle}</span>
+            <span class="tweet-time">· ตอนนี้</span>
+          </div>
+          <div class="tweet-text">${t.text}</div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  function renderTrending(tier){
+    const tags = TRENDING_POOL[tier];
+    $('#trending-col').innerHTML = tags.map((tag,i)=>`
+      <div class="trend-item">
+        <div class="trend-cat">กำลังนิยม · ธุรกิจ</div>
+        <div class="trend-tag">${tag}</div>
+        <div class="trend-count">${(2.1 + i*1.4 + Math.random()).toFixed(1)}K โพสต์</div>
+      </div>
+    `).join('');
+  }
+
+  function spawnExodusBirds(overallPct){
+    const container = $('#grade-art').parentElement; // the .verdict card
+    $$('.exodus-bird', container).forEach(el=>el.remove());
+    const count = Math.max(3, Math.min(14, Math.round(overallPct*20)));
+    for(let i=0;i<count;i++){
+      const bird = document.createElement('div');
+      bird.className = 'exodus-bird';
+      bird.innerHTML = `<svg viewBox="0 0 26 26" xmlns="http://www.w3.org/2000/svg"><path d="M23.5 6.2c-.9.4-1.8.7-2.8.8 1-.6 1.8-1.6 2.2-2.8-1 .6-2 1-3.1 1.2-.9-1-2.2-1.6-3.6-1.6-2.7 0-4.9 2.2-4.9 4.9 0 .4 0 .8.1 1.1-4.1-.2-7.7-2.2-10.1-5.1-.4.7-.7 1.6-.7 2.5 0 1.7.9 3.2 2.2 4.1-.8 0-1.6-.2-2.2-.6v.1c0 2.4 1.7 4.4 3.9 4.8-.4.1-.8.2-1.3.2-.3 0-.6 0-.9-.1.6 2 2.4 3.4 4.5 3.4-1.7 1.3-3.7 2.1-6 2.1-.4 0-.8 0-1.2-.1 2.1 1.4 4.7 2.2 7.4 2.2 8.9 0 13.7-7.4 13.7-13.7v-.6c.9-.7 1.7-1.5 2.3-2.5z" fill="#1D9BF0"/></svg>`;
+      const leftOffset = (Math.random()*160 - 80).toFixed(0);
+      const drift = (Math.random()*120 - 60).toFixed(0);
+      bird.style.left = `calc(50% + ${leftOffset}px)`;
+      bird.style.setProperty('--bx', drift+'px');
+      bird.style.animationDelay = (Math.random()*0.6).toFixed(2)+'s';
+      container.appendChild(bird);
+      setTimeout(()=>bird.remove(), 2600);
+    }
+  }
+
+  function spawnConfetti(){
+    const old = document.getElementById('confetti-layer');
+    if(old) old.remove();
+    const layer = document.createElement('div');
+    layer.id = 'confetti-layer';
+    layer.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:200;overflow:hidden;';
+    const colors = ['#1d9bf0','#ffd400','#00ba7c','#ffffff','#794bc4'];
+    for(let i=0;i<44;i++){
+      const piece = document.createElement('div');
+      piece.className = 'confetti-piece';
+      piece.style.left = (Math.random()*100)+'%';
+      piece.style.background = colors[Math.floor(Math.random()*colors.length)];
+      piece.style.animationDuration = (2.2 + Math.random()*1.4).toFixed(2)+'s';
+      piece.style.animationDelay = (Math.random()*0.4).toFixed(2)+'s';
+      layer.appendChild(piece);
+    }
+    document.body.appendChild(layer);
+    setTimeout(()=>layer.remove(), 4200);
+  }
+
+  function triggerShake(){
+    const wrap = document.querySelector('.wrap');
+    wrap.classList.remove('shake-effect');
+    void wrap.offsetWidth; // restart animation if triggered twice
+    wrap.classList.add('shake-effect');
+    setTimeout(()=>wrap.classList.remove('shake-effect'), 600);
+  }
+
+  function triggerGimmicks(s){
+    const tier = tierFor(s.crisisIndex);
+    renderTweets(tier);
+    renderTrending(tier);
+    spawnExodusBirds(s.overallPct);
+    if(tier==='stable') spawnConfetti();
+    if(tier==='catastrophic') triggerShake();
+  }
+
   function buildReport(s){
     const list = [];
     if(s.ops>=70) list.push('ระบบล่มบ่อยและบั๊กสะสม เหตุการณ์แบบเดียวกับที่ Twitter เคยเผชิญหลังตัดทีมโครงสร้างพื้นฐานจำนวนมาก มีโอกาสเกิดซ้ำ');
@@ -649,6 +833,7 @@
     $('#report-list').innerHTML = buildReport(s).map(t=>`<li>${t}</li>`).join('');
     renderDebrief(s);
     renderBenchmark();
+    triggerGimmicks(s);
   }
 
   async function saveResult(s){
@@ -731,6 +916,8 @@
     $('#report-list').innerHTML = '';
     $('#debrief-body').innerHTML = '';
     $('#benchmark-body').innerHTML = '';
+    $('#tweets-col').innerHTML = '';
+    $('#trending-col').innerHTML = '';
     loadComparison();
   });
 
