@@ -1,5 +1,6 @@
 // POST /api/submit
-// Body: { team, method, cuts, totalCut, pct, ops, legal, pr, morale, crisisIndex, verdict }
+// Body: { team, method, cuts, totalCut, pct, ops, legal, pr, morale, crisisIndex, verdict,
+//         round1Cut, voluntaryDepartures, culturePolicy }
 // Saves (overwrites) one record per team name into a Redis hash "submissions".
 
 const { upstash } = require("../lib/upstash");
@@ -30,6 +31,9 @@ module.exports = async (req, res) => {
       morale: Number(body.morale) || 0,
       crisisIndex: Number(body.crisisIndex) || 0,
       verdict: (body.verdict || "").toString().slice(0, 1000),
+      round1Cut: Number.isFinite(Number(body.round1Cut)) ? Number(body.round1Cut) : null,
+      voluntaryDepartures: Number.isFinite(Number(body.voluntaryDepartures)) ? Number(body.voluntaryDepartures) : null,
+      culturePolicy: (body.culturePolicy || "").toString().slice(0, 200),
       ts: Date.now(),
     };
 
