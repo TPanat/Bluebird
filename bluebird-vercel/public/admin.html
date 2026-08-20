@@ -149,6 +149,7 @@
           </div>
           <div class="method-text">${escapeHtml(r.method || '(ไม่มีคำอธิบาย)')}</div>
           <div class="cuts-row">${cutsHtml}</div>
+          ${r.culturePolicy ? `<div class="cuts-row"><div class="cut-chip">นโยบายวัฒนธรรม: <b>${escapeHtml(r.culturePolicy)}</b></div><div class="cut-chip">ปลดจริง: <b>${r.round1Cut ?? '-'}</b></div><div class="cut-chip">ลาออกเอง: <b>${r.voluntaryDepartures ?? '-'}</b></div></div>` : ''}
           <div class="score-row">
             <div class="score-pill">รวมปลด<b>${r.totalCut} (${r.pct}%)</b></div>
             <div class="score-pill">ระบบ<b>${r.ops}</b></div>
