@@ -98,6 +98,15 @@
   .chip:hover{border-color:var(--accent);color:var(--accent);background:rgba(29,155,240,.08);}
   textarea#methodText{width:100%;min-height:110px;background:#fff;border:1px solid var(--border);border-radius:16px;padding:14px;color:var(--text);font-family:var(--body);font-size:15px;line-height:1.6;resize:vertical;}
   textarea#methodText:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(29,155,240,.15);}
+  .policy-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;margin:14px 0 4px;}
+  .policy-card{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:16px 18px;cursor:pointer;position:relative;}
+  .policy-card input{position:absolute;opacity:0;pointer-events:none;}
+  .policy-card:hover{border-color:var(--accent);}
+  .policy-card.selected{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset;background:rgba(29,155,240,.05);}
+  .policy-tag{display:inline-block;font-family:var(--mono);font-size:10px;font-weight:700;color:var(--accent);border:1px solid rgba(29,155,240,.3);background:rgba(29,155,240,.08);border-radius:999px;padding:2px 8px;margin-bottom:8px;}
+  .policy-name{font-weight:700;font-size:15px;margin-bottom:6px;}
+  .policy-desc{font-size:12.5px;color:var(--dim);line-height:1.55;}
+  .policy-stat{margin-top:10px;font-family:var(--mono);font-size:11px;color:var(--danger);font-weight:700;}
   .charcount{text-align:right;font-family:var(--mono);font-size:11px;color:var(--dim);margin-top:6px;}
   .judge-status{margin-top:12px;font-family:var(--mono);font-size:12.5px;font-weight:600;min-height:18px;}
   .judge-status.loading{color:var(--warn);}
@@ -199,6 +208,19 @@
     </div>
   </section>
 
+  <section id="screen-culture" class="screen">
+    <div class="briefing" style="margin-bottom:22px;">
+      <h1 style="font-size:clamp(20px,3vw,28px);">พนักงานที่เหลือกำลังจับตาดูคุณอยู่</h1>
+      <p>หลังปลดคนไปแล้ว เหลือพนักงานอยู่ <b id="culture-remaining" style="color:var(--text);font-weight:800;">0</b> คน ผู้บริหารต้องประกาศทิศทางวัฒนธรรมการทำงานให้ทีมที่เหลือทราบ — การตัดสินใจนี้จะส่งผลต่อจำนวนคนที่ "ลาออกเอง" เพิ่มเติม นอกเหนือจากที่ปลดไปแล้ว เหมือนที่เกิดขึ้นจริงกับ Twitter ตอนประกาศวัฒนธรรม "hardcore"</p>
+    </div>
+    <div class="section-title">ขั้นที่ 3 — ประกาศนโยบายวัฒนธรรมการทำงาน</div>
+    <div class="policy-grid" id="culture-grid"></div>
+    <div class="summary-bar">
+      <div class="info">เลือกนโยบายเพื่อดูผลกระทบรวมทั้งสองรอบ</div>
+      <button class="btn btn-primary" id="btn-culture-confirm" disabled>ยืนยันนโยบาย →</button>
+    </div>
+  </section>
+
   <section id="screen-results" class="screen">
     <div class="verdict">
       <div class="grade-art" id="grade-art"></div>
@@ -212,6 +234,8 @@
     </div>
     <div class="meters" id="meters"></div>
     <div class="report"><h3>รายงานผลกระทบ</h3><ul id="report-list"></ul></div>
+    <div class="report" id="debrief-card"><h3>เทียบกับเหตุการณ์จริง (Twitter, 2022)</h3><div id="debrief-body"></div></div>
+    <div class="report" id="benchmark-card"><h3>เทียบกับมาตรฐานอุตสาหกรรม</h3><div id="benchmark-body"></div></div>
     <div class="section-title">ตารางเปรียบเทียบทุกกลุ่ม</div>
     <div class="cmp-wrap"><table class="cmp" id="cmp-table"></table></div>
     <div class="actions">
@@ -250,11 +274,19 @@
     'ใช้ระบบสุ่มคัดชื่อออกอย่างเร่งรีบ แล้วเรียกกลับบางคนภายหลังเมื่อพบว่าตัดผิด',
   ];
 
+  const CULTURE_POLICIES = [
+    {id:'hardcore', tag:'ULTIMATUM', name:'Hardcore — 24/7 ทุ่มสุดตัว หรือไปเลย', desc:'ประกาศว่าใครไม่พร้อมทำงานหนักแบบเข้มข้นตลอดเวลา ให้ถือว่าลาออกเองภายในวันนั้น', attrition:0.32, mods:{ops:10, pr:10, legal:15, morale:20}},
+    {id:'moderate', tag:'PUSH', name:'ประนีประนอม — เพิ่มความเข้มข้น พร้อมพูดคุย', desc:'ขอให้ทำงานหนักขึ้นกว่าเดิม แต่เปิดให้เจรจาและมีช่วงปรับตัว ไม่ใช้คำขาด', attrition:0.15, mods:{ops:3, pr:3, legal:5, morale:8}},
+    {id:'balanced', tag:'STEADY', name:'รักษาสมดุล — ไม่เปลี่ยนวัฒนธรรมการทำงาน', desc:'ไม่บังคับเปลี่ยนแปลงวัฒนธรรมการทำงาน ให้ทีมที่เหลือทำงานตามปกติ', attrition:0.04, mods:{ops:0, pr:-3, legal:0, morale:-5}},
+  ];
+
   const state = {
     team: '',
     cuts: Object.fromEntries(DEPARTMENTS.map(d=>[d.id,0])),
     methodText: '',
     verdictText: '',
+    round1Scores: null,
+    culturePolicy: null,
     lastScores: null,
   };
 
@@ -401,6 +433,54 @@
     return {ops, pr, legal, morale, savings, crisisIndex, totalCut:tc, overallPct};
   }
 
+  function renderCultureScreen(round1){
+    const remaining = TOTAL_COUNT - round1.totalCut;
+    $('#culture-remaining').textContent = remaining;
+    const grid = $('#culture-grid');
+    grid.innerHTML = CULTURE_POLICIES.map(p=>`
+      <label class="policy-card" data-id="${p.id}">
+        <input type="radio" name="culturePolicy" value="${p.id}">
+        <div class="policy-tag">${p.tag}</div>
+        <div class="policy-name">${p.name}</div>
+        <div class="policy-desc">${p.desc}</div>
+        <div class="policy-stat">คาดคนลาออกเองเพิ่ม ~${Math.round(p.attrition*100)}% ของที่เหลือ</div>
+      </label>
+    `).join('');
+    $$('.policy-card', grid).forEach(card=>{
+      card.addEventListener('click', ()=>{
+        $$('.policy-card', grid).forEach(c=>c.classList.remove('selected'));
+        card.classList.add('selected');
+        $('input[type=radio]', card).checked = true;
+        state.culturePolicy = card.dataset.id;
+        $('#btn-culture-confirm').disabled = false;
+      });
+    });
+    $('#btn-culture-confirm').disabled = true;
+  }
+
+  function applyCulturePolicy(round1, policyId){
+    const policy = CULTURE_POLICIES.find(p=>p.id===policyId);
+    const remainingAfterRound1 = TOTAL_COUNT - round1.totalCut;
+    const voluntaryDepartures = Math.round(remainingAfterRound1 * policy.attrition);
+    const combinedTotalCut = round1.totalCut + voluntaryDepartures;
+    const combinedOverallPct = combinedTotalCut / TOTAL_COUNT;
+
+    const ops = clamp(round1.ops + policy.mods.ops);
+    const pr = clamp(round1.pr + policy.mods.pr);
+    const legal = clamp(round1.legal + policy.mods.legal);
+    const morale = clamp(round1.morale - policy.mods.morale);
+    const savings = clamp(combinedOverallPct*100);
+    const crisisIndex = clamp((ops+legal+pr)/3*0.7 + (100-morale)*0.3);
+
+    return {
+      ops, pr, legal, morale, savings, crisisIndex,
+      totalCut: combinedTotalCut, overallPct: combinedOverallPct,
+      round1Cut: round1.totalCut, round1Pct: round1.overallPct,
+      voluntaryDepartures, remainingAfterRound1,
+      policyName: policy.name, policyId: policy.id,
+    };
+  }
+
   const GRADE_ART = {
     stable: `<svg viewBox="0 0 240 160" xmlns="http://www.w3.org/2000/svg">
       <circle cx="205" cy="32" r="16" fill="#ffd400" opacity=".9"/>
@@ -503,15 +583,48 @@
     return list;
   }
 
+  function renderDebrief(s){
+    const rows = [
+      {label:'สัดส่วนพนักงานที่หายไปทั้งหมด (ปลด + ลาออกเอง)', real:'73%', team: Math.round(s.overallPct*100)+'%'},
+      {label:'ผู้ลงโฆษณารายใหญ่ที่ถอนตัว', real:'62% (ภายใน ~4 เดือน)', team: s.pr>=55 ? 'เสี่ยงสูงใกล้เคียง' : s.pr>=30 ? 'เสี่ยงปานกลาง' : 'เสี่ยงต่ำกว่ามาก'},
+      {label:'คดีความ WARN Act / แรงงาน', real:'ถูกฟ้องร้องเป็นกลุ่ม (class action)', team: s.legal>=55 ? 'เสี่ยงสูงใกล้เคียง' : s.legal>=30 ? 'เสี่ยงปานกลาง' : 'เสี่ยงต่ำกว่ามาก'},
+      {label:'ผู้เชี่ยวชาญ HR ที่ไม่อยากร่วมงานด้วย', real:'73%', team: s.morale<=30 ? 'แนวโน้มคล้ายกัน (ขวัญกำลังใจต่ำมาก)' : s.morale<=60 ? 'เสี่ยงปานกลาง' : 'เสี่ยงต่ำกว่ามาก'},
+    ];
+    $('#debrief-body').innerHTML = `<div class="cmp-wrap"><table class="cmp">
+      <tr><th>ตัวชี้วัด</th><th>Twitter จริง (2022)</th><th>ทีมคุณ</th></tr>
+      ${rows.map(r=>`<tr><td>${r.label}</td><td>${r.real}</td><td>${r.team}</td></tr>`).join('')}
+    </table></div>`;
+  }
+
+  function renderBenchmark(){
+    const txt = state.methodText || '';
+    const checks = [
+      {label:'แจ้งล่วงหน้าอย่างน้อย 60 วัน (มาตรฐาน Google/Microsoft)', match:/60\s*วัน|แจ้งล่วงหน้า/.test(txt)},
+      {label:'มีค่าชดเชย (severance)', match:/ชดเชย|severance/i.test(txt)},
+      {label:'ต่อประกันสุขภาพให้ (มาตรฐาน Google/Meta: 6 เดือน)', match:/ประกันสุขภาพ|health/i.test(txt)},
+      {label:'มีบริการช่วยหางานใหม่ (outplacement)', match:/หางานใหม่|outplacement|job placement/i.test(txt)},
+    ];
+    const metCount = checks.filter(c=>c.match).length;
+    $('#benchmark-body').innerHTML = `
+      <p style="font-size:13px;color:var(--dim);margin:0 0 10px;line-height:1.7;">Google, Microsoft และ Meta ในเคสจริงล้วนแจ้งล่วงหน้า 60 วัน จ่ายค่าชดเชยหลายเดือน และต่อประกันสุขภาพให้ วิธีการที่ทีมคุณอธิบายตรงตามมาตรฐานนี้ <b style="color:var(--text);">${metCount}/4 ข้อ</b></p>
+      <ul style="margin:0;padding-left:20px;line-height:1.9;font-size:13.5px;">
+        ${checks.map(c=>`<li style="color:${c.match?'var(--good)':'var(--dim)'};">${c.match?'✓':'✗'} ${c.label}</li>`).join('')}
+      </ul>`;
+  }
+
   function renderResults(s){
     $('#grade-art').innerHTML = gradeArtFor(s.crisisIndex);
     const shortMethod = state.methodText.length>60 ? state.methodText.slice(0,60)+'…' : state.methodText;
-    $('#res-teamline').textContent = `ทีม: ${state.team || '(ไม่ระบุชื่อ)'}  •  วิธีการ: "${shortMethod}"  •  ปลดออก ${s.totalCut} คน (${Math.round(s.overallPct*100)}%)`;
+    let cutLine = `ปลดออก ${s.totalCut} คน (${Math.round(s.overallPct*100)}%)`;
+    if(typeof s.round1Cut === 'number'){
+      cutLine = `ปลดออกจริง ${s.round1Cut} คน + ลาออกเองอีก ${s.voluntaryDepartures} คน (นโยบาย: ${s.policyName}) = รวม ${s.totalCut} คน (${Math.round(s.overallPct*100)}%)`;
+    }
+    $('#res-teamline').textContent = `ทีม: ${state.team || '(ไม่ระบุชื่อ)'}  •  วิธีการ: "${shortMethod}"  •  ${cutLine}`;
     const g = gradeFor(s.crisisIndex);
     const grade = $('#res-grade');
     grade.textContent = g.label;
     grade.style.color = g.color;
-    $('#res-summary').textContent = `ดัชนีวิกฤตรวม (Crisis Index): ${s.crisisIndex}/100 — คำนวณจากความเสี่ยงระบบ กฎหมาย ภาพลักษณ์ และขวัญกำลังใจพนักงานที่เหลือ (รวมคะแนนที่ Claude ประเมินจากวิธีการที่ทีมอธิบาย)`;
+    $('#res-summary').textContent = `ดัชนีวิกฤตรวม (Crisis Index): ${s.crisisIndex}/100 — คำนวณจากความเสี่ยงระบบ กฎหมาย ภาพลักษณ์ และขวัญกำลังใจพนักงานที่เหลือ (รวมทั้งรอบปลดคนและรอบนโยบายวัฒนธรรม)`;
     if(state.verdictText){
       $('#claude-note').style.display = 'block';
       $('#claude-note-text').textContent = state.verdictText;
@@ -534,6 +647,8 @@
       </div>`;
     }).join('');
     $('#report-list').innerHTML = buildReport(s).map(t=>`<li>${t}</li>`).join('');
+    renderDebrief(s);
+    renderBenchmark();
   }
 
   async function saveResult(s){
@@ -550,6 +665,9 @@
           ops: s.ops, legal: s.legal, pr: s.pr, morale: s.morale,
           crisisIndex: s.crisisIndex,
           verdict: state.verdictText,
+          round1Cut: s.round1Cut,
+          voluntaryDepartures: s.voluntaryDepartures,
+          culturePolicy: s.policyName,
         }),
       });
     }catch(err){ console.error('บันทึกผลไม่สำเร็จ', err); }
@@ -611,6 +729,8 @@
     $('#claude-note').style.display = 'none';
     $('#meters').innerHTML = '';
     $('#report-list').innerHTML = '';
+    $('#debrief-body').innerHTML = '';
+    $('#benchmark-body').innerHTML = '';
     loadComparison();
   });
 
@@ -624,13 +744,11 @@
       const judged = await judgeMethod();
       state.verdictText = judged.verdict;
       const s = computeScores(judged);
-      state.lastScores = s;
-      renderResults(s);
-      await saveResult(s);
-      await loadComparison();
+      state.round1Scores = s;
       status.className = 'judge-status ok';
-      status.textContent = 'ประเมินสำเร็จ';
-      showScreen('screen-results');
+      status.textContent = 'ประเมินรอบแรกสำเร็จ — ไปต่อขั้นตอนถัดไป';
+      renderCultureScreen(s);
+      showScreen('screen-culture');
     }catch(err){
       console.error(err);
       status.className = 'judge-status error';
@@ -640,10 +758,25 @@
     }
   });
 
+  $('#btn-culture-confirm').addEventListener('click', async ()=>{
+    if(!state.culturePolicy || !state.round1Scores) return;
+    const btn = $('#btn-culture-confirm');
+    btn.disabled = true;
+    const combined = applyCulturePolicy(state.round1Scores, state.culturePolicy);
+    state.lastScores = combined;
+    renderResults(combined);
+    await saveResult(combined);
+    await loadComparison();
+    showScreen('screen-results');
+    btn.disabled = false;
+  });
+
   $('#btn-retry').addEventListener('click', ()=>{
     state.cuts = Object.fromEntries(DEPARTMENTS.map(d=>[d.id,0]));
     state.methodText = '';
     state.verdictText = '';
+    state.round1Scores = null;
+    state.culturePolicy = null;
     renderDeptGrid();
     renderChips();
     $('#methodText').value = '';
