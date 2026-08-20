@@ -123,8 +123,8 @@
   .ticker-content{display:inline-flex;align-items:center;height:100%;font-family:var(--mono);font-weight:600;font-size:12.5px;color:#ffffff;animation:scroll-left 26s linear infinite;padding-left:100%;}
   .ticker-content span{margin-right:40px;}
   @keyframes scroll-left{from{transform:translateX(0);}to{transform:translateX(-100%);}}
-  .verdict{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:24px 26px;margin-bottom:24px;position:relative;overflow:hidden;}
-  .grade-art{display:flex;justify-content:center;margin-bottom:12px;}
+  .verdict{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:24px 26px;margin-bottom:24px;position:relative;}
+  .grade-art{display:flex;justify-content:center;margin-bottom:12px;position:relative;}
   .grade-art svg{width:190px;height:auto;max-width:100%;}
   .verdict-grade{font-family:var(--display);font-weight:800;font-size:clamp(24px,4vw,34px);letter-spacing:-.3px;margin-bottom:6px;text-align:center;}
   .verdict-sub{font-family:var(--mono);font-size:12.5px;color:var(--dim);margin-bottom:16px;text-align:center;}
@@ -149,11 +149,11 @@
   .cmp-wrap{overflow-x:auto;}
 
   /* ---------- GIMMICKS ---------- */
-  .exodus-bird{position:absolute;bottom:6px;left:50%;width:16px;height:16px;pointer-events:none;animation:bird-fly 1.7s ease-out forwards;z-index:5;}
+  .exodus-bird{position:absolute;bottom:20px;left:50%;width:30px;height:30px;pointer-events:none;animation:bird-fly 2.6s ease-out forwards;z-index:20;filter:drop-shadow(0 2px 3px rgba(0,0,0,.15));}
   @keyframes bird-fly{
-    0%{ transform:translate(0,0) scale(.75) rotate(0deg); opacity:0; }
-    12%{ opacity:1; }
-    100%{ transform:translate(var(--bx,20px),-170px) scale(1) rotate(18deg); opacity:0; }
+    0%{ transform:translate(0,0) scale(.6) rotate(0deg); opacity:0; }
+    10%{ opacity:1; transform:translate(0,-10px) scale(.9) rotate(-5deg); }
+    100%{ transform:translate(var(--bx,20px),-260px) scale(1.1) rotate(20deg); opacity:0; }
   }
 
   .social-panel{display:grid;grid-template-columns:1.6fr 1fr;gap:14px;margin-bottom:24px;align-items:start;}
@@ -695,20 +695,20 @@
   }
 
   function spawnExodusBirds(overallPct){
-    const container = $('#grade-art').parentElement; // the .verdict card
+    const container = $('#grade-art'); // anchor directly on the building illustration
     $$('.exodus-bird', container).forEach(el=>el.remove());
     const count = Math.max(3, Math.min(14, Math.round(overallPct*20)));
     for(let i=0;i<count;i++){
       const bird = document.createElement('div');
       bird.className = 'exodus-bird';
       bird.innerHTML = `<svg viewBox="0 0 26 26" xmlns="http://www.w3.org/2000/svg"><path d="M23.5 6.2c-.9.4-1.8.7-2.8.8 1-.6 1.8-1.6 2.2-2.8-1 .6-2 1-3.1 1.2-.9-1-2.2-1.6-3.6-1.6-2.7 0-4.9 2.2-4.9 4.9 0 .4 0 .8.1 1.1-4.1-.2-7.7-2.2-10.1-5.1-.4.7-.7 1.6-.7 2.5 0 1.7.9 3.2 2.2 4.1-.8 0-1.6-.2-2.2-.6v.1c0 2.4 1.7 4.4 3.9 4.8-.4.1-.8.2-1.3.2-.3 0-.6 0-.9-.1.6 2 2.4 3.4 4.5 3.4-1.7 1.3-3.7 2.1-6 2.1-.4 0-.8 0-1.2-.1 2.1 1.4 4.7 2.2 7.4 2.2 8.9 0 13.7-7.4 13.7-13.7v-.6c.9-.7 1.7-1.5 2.3-2.5z" fill="#1D9BF0"/></svg>`;
-      const leftOffset = (Math.random()*160 - 80).toFixed(0);
-      const drift = (Math.random()*120 - 60).toFixed(0);
+      const leftOffset = (Math.random()*180 - 90).toFixed(0);
+      const drift = (Math.random()*160 - 80).toFixed(0);
       bird.style.left = `calc(50% + ${leftOffset}px)`;
       bird.style.setProperty('--bx', drift+'px');
-      bird.style.animationDelay = (Math.random()*0.6).toFixed(2)+'s';
+      bird.style.animationDelay = (Math.random()*0.7).toFixed(2)+'s';
       container.appendChild(bird);
-      setTimeout(()=>bird.remove(), 2600);
+      setTimeout(()=>bird.remove(), 3600);
     }
   }
 
