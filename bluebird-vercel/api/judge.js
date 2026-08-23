@@ -14,13 +14,35 @@ const SYSTEM_PROMPT = `คุณเป็นที่ปรึกษาด้า
 
 ถ้าคำอธิบายที่ได้รับสั้นมาก คลุมเครือ หรือไม่สมเหตุสมผล ให้ประเมินอย่างสมเหตุสมผลที่สุดเท่าที่ทำได้ อย่าปฏิเสธที่จะให้คะแนน
 
-ตอบกลับเป็น JSON เท่านั้น ห้ามมีข้อความอื่นใดๆ นอกเหนือจาก JSON ห้ามมีคำนำ คำอธิบายก่อนหรือหลัง และห้ามใส่ markdown code fence เด็ดขาด คำตอบทั้งหมดของคุณต้องขึ้นต้นด้วยอักขระ { และจบด้วยอักขระ } เท่านั้น รูปแบบต้องเป็นดังนี้เป๊ะๆ:
-{"ops": number, "pr": number, "legal": number, "morale": number, "verdict": "คำอธิบายสั้นๆ ภาษาไทย 2-3 ประโยค ให้เหตุผลโดยอ้างอิงหลักการ HR/กฎหมายแรงงาน/การบริหารภาพลักษณ์ที่เกี่ยวข้อง"}`;
+ตอบกลับเป็น JSON เท่านั้น ห้ามมีข้อความอื่นใดๆ นอกเหนือจาก JSON ห้ามมีคำนำ คำอธิบายก่อนหรือหลัง และห้ามใส่ markdown code fence เด็ดขาด คำตอบทั้งหมดของคุณต้องขึ้นต้นด้วยอักขระ { และจบด้วยอักขระ } เท่านั้น field "verdict" ต้องสั้นกระชับไม่เกิน 2 ประโยคเด็ดขาด (เพื่อไม่ให้คำตอบยาวเกินไป) รูปแบบต้องเป็นดังนี้เป๊ะๆ:
+{"ops": number, "pr": number, "legal": number, "morale": number, "verdict": "คำอธิบายสั้นกระชับ ไม่เกิน 2 ประโยค ภาษาไทย ให้เหตุผลโดยอ้างอิงหลักการ HR/กฎหมายแรงงาน/การบริหารภาพลักษณ์ที่เกี่ยวข้อง"}`;
 
 function clampNum(v) {
   const n = Number(v);
   if (Number.isNaN(n)) return 0;
   return Math.max(-30, Math.min(50, n));
+}
+
+function extractNumberField(raw, key) {
+  const m = raw.match(new RegExp('"' + key + '"\\s*:\\s*(-?\\d+(?:\\.\\d+)?)'));
+  return m ? Number(m[1]) : null;
+}
+
+function salvagePartialJson(raw) {
+  // Best-effort recovery for a response that got cut off mid-string (usually
+  // mid-way through "verdict") — the four numeric fields normally appear
+  // before "verdict" in the object, so they're often still intact even when
+  // the closing brace never arrived.
+  const ops = extractNumberField(raw, "ops");
+  const pr = extractNumberField(raw, "pr");
+  const legal = extractNumberField(raw, "legal");
+  const morale = extractNumberField(raw, "morale");
+  if (ops === null || pr === null || legal === null || morale === null) return null;
+  const vMatch = raw.match(/"verdict"\s*:\s*"([^"]*)/);
+  const verdict = vMatch && vMatch[1]
+    ? vMatch[1] + " (หมายเหตุ: คำอธิบายจาก Claude ถูกตัดขาดกลางคัน แต่คะแนนตัวเลขด้านบนยังใช้ได้ตามปกติ)"
+    : "คะแนนคำนวณสำเร็จ แต่คำอธิบายจาก Claude ถูกตัดขาดกลางคันในครั้งนี้";
+  return { ops, pr, legal, morale, verdict };
 }
 
 module.exports = async (req, res) => {
@@ -58,7 +80,7 @@ module.exports = async (req, res) => {
         },
         body: JSON.stringify({
           model: "claude-sonnet-5",
-          max_tokens: 1000,
+          max_tokens: 4096,
           system: SYSTEM_PROMPT,
           messages: [{ role: "user", content: userMsg }],
         }),
@@ -82,8 +104,21 @@ module.exports = async (req, res) => {
       const start = raw.indexOf("{");
       const end = raw.lastIndexOf("}");
       if (start === -1 || end === -1 || end < start) {
-        console.error("No JSON object found in Claude response:", textBlock);
-        throw new Error("No JSON object in model response");
+        const salvaged = start !== -1 ? salvagePartialJson(raw.slice(start)) : null;
+        if (salvaged) {
+          console.error(
+            "JSON was truncated but numeric fields were salvaged. stop_reason:",
+            data.stop_reason
+          );
+          return salvaged;
+        }
+        console.error(
+          "No JSON object found in Claude response. stop_reason:",
+          data.stop_reason,
+          "textBlock:",
+          textBlock
+        );
+        throw new Error("No JSON object in model response (stop_reason: " + data.stop_reason + ")");
       }
       return JSON.parse(raw.slice(start, end + 1));
     }
