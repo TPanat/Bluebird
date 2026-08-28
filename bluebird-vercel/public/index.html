@@ -47,6 +47,8 @@
   .btn-ghost:hover{background:var(--panel2);filter:none;}
   .actions{display:flex;gap:12px;margin-top:24px;flex-wrap:wrap;}
   .dept-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:14px;margin:18px 0 26px;}
+  @media (min-width:820px){ .dept-grid{grid-template-columns:repeat(3,1fr);} }
+  .dept-desc{font-size:12px;color:var(--dim);line-height:1.5;margin-bottom:10px;}
   .dept-card{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:16px;}
   .dept-top{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
   .badge{font-family:var(--mono);font-weight:800;font-size:13px;background:rgba(29,155,240,.1);border:1px solid rgba(29,155,240,.25);color:var(--accent);border-radius:999px;padding:4px 10px;}
@@ -120,7 +122,7 @@
   #ticker-bar{position:fixed;left:0;bottom:0;width:100%;height:38px;background:var(--accent);border-top:1px solid var(--accent-dark);overflow:hidden;display:flex;align-items:center;z-index:50;}
   #ticker-bar .lamp{flex:0 0 auto;font-family:var(--mono);font-size:11px;font-weight:800;background:#0f1419;color:#ffffff;padding:8px 12px;letter-spacing:1px;height:100%;display:flex;align-items:center;}
   .ticker-track{flex:1;overflow:hidden;white-space:nowrap;position:relative;height:100%;}
-  .ticker-content{display:inline-flex;align-items:center;height:100%;font-family:var(--mono);font-weight:600;font-size:12.5px;color:#ffffff;animation:scroll-left 26s linear infinite;padding-left:100%;}
+  .ticker-content{display:inline-flex;align-items:center;height:100%;font-family:var(--mono);font-weight:600;font-size:12.5px;color:#ffffff;animation:scroll-left 48s linear infinite;padding-left:100%;}
   .ticker-content span{margin-right:40px;}
   @keyframes scroll-left{from{transform:translateX(0);}to{transform:translateX(-100%);}}
   .verdict{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:24px 26px;margin-bottom:24px;position:relative;}
@@ -200,11 +202,12 @@
         <b>Claude จะอ่านคำอธิบายของทีมคุณแล้วตัดสินผลกระทบให้</b> เหมือนที่ปรึกษา HR/กฎหมาย/PR ตัวจริง
       </p>
       <div class="brief-stats">
-        <div><div class="n">1,380</div><div class="l">พนักงานทั้งหมด</div></div>
-        <div><div class="n">7</div><div class="l">ฝ่ายงาน</div></div>
+        <div><div class="n" id="stat-total-employees">—</div><div class="l">พนักงานทั้งหมด</div></div>
+        <div><div class="n" id="stat-dept-count">—</div><div class="l">ฝ่ายงาน</div></div>
         <div><div class="n">พิมพ์เอง</div><div class="l">วิธีการเลิกจ้าง</div></div>
         <div><div class="n">Claude</div><div class="l">เป็นผู้ตัดสินผลกระทบ</div></div>
       </div>
+      <p style="margin-top:10px;font-size:11.5px;color:var(--dim);">* ตัวเลขพนักงานและแผนกงานในเกมเป็นตัวเลขสมมติเพื่อการจำลองสถานการณ์ ไม่ใช่ข้อมูลจริงทั้งหมด</p>
       <label class="field-label">ชื่อทีม / กลุ่ม</label>
       <input id="teamName" type="text" placeholder="เช่น กลุ่ม 1, ทีม Falcon...">
       <div class="actions">
@@ -231,7 +234,7 @@
     </div>
 
     <div class="summary-bar">
-      <div class="info">รวมที่จะปลดออก: <b id="sum-cut">0</b> / 1,380 คน (<b id="sum-pct">0%</b>)</div>
+      <div class="info">รวมที่จะปลดออก: <b id="sum-cut">0</b> / <span id="sum-total">—</span> คน (<b id="sum-pct">0%</b>)</div>
       <button class="btn btn-primary" id="btn-confirm" disabled>ส่งให้ Claude ตัดสิน →</button>
     </div>
   </section>
@@ -293,13 +296,24 @@
   "use strict";
 
   const DEPARTMENTS = [
-    {id:'eng',    abbr:'EN', name:'วิศวกรรม / พัฒนาผลิตภัณฑ์', count:500, ops:30, pr:5},
-    {id:'trust',  abbr:'TS', name:'Trust & Safety (ดูแลความปลอดภัยเนื้อหา)', count:180, ops:15, pr:35},
-    {id:'sre',    abbr:'SR', name:'โครงสร้างพื้นฐาน / SRE', count:120, ops:35, pr:5},
-    {id:'sales',  abbr:'SA', name:'ขายและโฆษณา', count:280, ops:5,  pr:15},
-    {id:'support',abbr:'CS', name:'บริการลูกค้า', count:140, ops:5,  pr:20},
-    {id:'hr',     abbr:'HR', name:'ฝ่ายบุคคล', count:90,  ops:3,  pr:5},
-    {id:'legal',  abbr:'LG', name:'กฎหมายและนโยบาย', count:70,  ops:2,  pr:5},
+    {id:'eng', abbr:'EN', name:'วิศวกรรม / พัฒนาผลิตภัณฑ์', count:2900, ops:30, pr:5,
+      desc:'ทีมที่เขียนโค้ด พัฒนาฟีเจอร์ใหม่ และดูแลผลิตภัณฑ์หลักของบริษัทในภาพรวม'},
+    {id:'trust', abbr:'TS', name:'Trust & Safety', count:700, ops:12, pr:35,
+      desc:'ตรวจสอบและจัดการเนื้อหาอันตราย เช่น hate speech กับข่าวปลอม รวมถึงทีมดูแลความถูกต้องของข้อมูลช่วงเลือกตั้ง'},
+    {id:'sre', abbr:'SR', name:'โครงสร้างพื้นฐาน / SRE', count:500, ops:35, pr:5,
+      desc:'ดูแลเซิร์ฟเวอร์และความเสถียรของระบบ (SRE = Site Reliability Engineering) คอยป้องกันระบบล่มและแก้ปัญหาเมื่อเกิดเหตุขัดข้อง'},
+    {id:'sales', abbr:'SA', name:'ขายและโฆษณา', count:1300, ops:5, pr:15,
+      desc:'ดูแลลูกค้าและผู้ลงโฆษณา สร้างรายได้หลักให้บริษัทผ่านการขายพื้นที่โฆษณา'},
+    {id:'marketing', abbr:'MK', name:'การตลาดและสื่อสารองค์กร', count:500, ops:3, pr:12,
+      desc:'วางแผนการสื่อสารองค์กร ดูแลภาพลักษณ์แบรนด์ และข่าวสารที่เผยแพร่สู่สาธารณะ'},
+    {id:'support', abbr:'CS', name:'บริการลูกค้า', count:700, ops:8, pr:15,
+      desc:'ตอบคำถามและแก้ปัญหาให้ผู้ใช้งาน บางส่วนต้องพร้อมให้บริการตลอด 24 ชั่วโมง'},
+    {id:'hr', abbr:'HR', name:'ฝ่ายบุคคล', count:400, ops:3, pr:8,
+      desc:'ดูแลกระบวนการจ้างงาน สวัสดิการ และความสัมพันธ์ระหว่างองค์กรกับพนักงาน'},
+    {id:'legal', abbr:'LG', name:'กฎหมายและนโยบายสาธารณะ', count:300, ops:2, pr:10,
+      desc:'ดูแลด้านกฎหมาย การปฏิบัติตามกฎระเบียบ และนโยบายสาธารณะที่เกี่ยวข้องกับแพลตฟอร์ม'},
+    {id:'access', abbr:'AI', name:'การเข้าถึง & AI อย่างมีจริยธรรม', count:200, ops:5, pr:10,
+      desc:'พัฒนาการเข้าถึงสำหรับผู้พิการ และตรวจสอบไม่ให้ระบบ AI/อัลกอริทึมมีอคติหรือเลือกปฏิบัติ'},
   ];
   const OPS_TOTAL = DEPARTMENTS.reduce((s,d)=>s+d.ops,0);
   const PR_TOTAL  = DEPARTMENTS.reduce((s,d)=>s+d.pr,0);
@@ -331,6 +345,10 @@
   const $ = (sel,root=document)=>root.querySelector(sel);
   const $$ = (sel,root=document)=>Array.from(root.querySelectorAll(sel));
 
+  $('#stat-total-employees').textContent = TOTAL_COUNT.toLocaleString();
+  $('#stat-dept-count').textContent = DEPARTMENTS.length;
+  $('#sum-total').textContent = TOTAL_COUNT.toLocaleString();
+
   function showScreen(id){
     $$('.screen').forEach(s=>s.classList.remove('active'));
     $('#'+id).classList.add('active');
@@ -343,7 +361,8 @@
       <div class="dept-card">
         <div class="dept-docket">DOCKET-0${i+1}</div>
         <div class="dept-top"><div class="badge">${d.abbr}</div><div class="dept-name">${d.name}</div></div>
-        <div class="dept-count">พนักงานปัจจุบัน: <b>${d.count}</b> คน</div>
+        <div class="dept-desc">${d.desc}</div>
+        <div class="dept-count">พนักงานปัจจุบัน: <b>${d.count.toLocaleString()}</b> คน</div>
         <div class="dept-control">
           <input type="range" class="dept-slider" min="0" max="${d.count}" value="0" step="1" data-id="${d.id}" aria-label="ปลดพนักงานฝ่าย ${d.name}">
           <input type="number" class="dept-number" min="0" max="${d.count}" value="0" data-id="${d.id}" aria-label="พิมพ์จำนวนที่จะปลดพนักงานฝ่าย ${d.name}">
@@ -416,6 +435,8 @@
     if(pct('legal')>0.5) w.push('⚠ ฝ่ายกฎหมายเหลือน้อย — บริษัทอาจรับมือคดีความไม่ทัน');
     if(pct('support')>0.6) w.push('⚠ ฝ่ายบริการลูกค้าถูกตัดหนัก — เวลาตอบกลับผู้ใช้จะยาวขึ้นมาก');
     if(pct('sales')>0.6) w.push('⚠ ฝ่ายขายโฆษณาถูกตัดหนัก — ความสัมพันธ์กับผู้ลงโฆษณารายใหญ่อาจสั่นคลอน');
+    if(pct('marketing')>0.6) w.push('⚠ ฝ่ายการตลาดถูกตัดหนัก — การสื่อสารภาพลักษณ์องค์กรช่วงวิกฤตจะทำได้ยากขึ้น');
+    if(pct('access')>0.6) w.push('⚠ ทีมการเข้าถึง/AI จริยธรรมถูกตัดหนัก — เสี่ยงถูกวิจารณ์เรื่องอคติในระบบและการเข้าถึงเพื่อผู้พิการ');
     if(/กลางดึก|เที่ยงคืน|ทันที|ไม่แจ้งล่วงหน้า|ตัดระบบ/.test(txt)) w.push('⚠ คำอธิบายวิธีการมีลักษณะกะทันหัน — Claude อาจให้คะแนนความเสี่ยงกฎหมาย/ภาพลักษณ์สูง');
     if(/สุ่ม|เรียกกลับ|ตัดผิด|ผิดคน/.test(txt)) w.push('⚠⚠ คำอธิบายมีลักษณะสุ่ม/วุ่นวาย — เสี่ยงดูไร้ระเบียบต่อสาธารณะ');
     if(/แจ้งล่วงหน้า|60 วัน|ชดเชย|ค่าชดเชย/.test(txt)) w.push('✓ คำอธิบายมีสัญญาณของการปฏิบัติตามกฎหมายแรงงาน');
