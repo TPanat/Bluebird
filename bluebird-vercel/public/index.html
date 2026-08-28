@@ -109,6 +109,9 @@
   .policy-name{font-weight:700;font-size:15px;margin-bottom:6px;}
   .policy-desc{font-size:12.5px;color:var(--dim);line-height:1.55;}
   .policy-stat{margin-top:10px;font-family:var(--mono);font-size:11px;color:var(--danger);font-weight:700;}
+  .scenario-box{background:var(--panel2);border:1px solid var(--border);border-left:3px solid var(--warn);border-radius:12px;padding:14px 16px;margin-top:16px;}
+  .scenario-label{font-family:var(--mono);font-size:11px;color:var(--warn);letter-spacing:.5px;margin-bottom:6px;font-weight:700;}
+  .scenario-box p{margin:0;font-size:14px;line-height:1.7;color:var(--text);font-style:italic;}
   .charcount{text-align:right;font-family:var(--mono);font-size:11px;color:var(--dim);margin-top:6px;}
   .judge-status{margin-top:12px;font-family:var(--mono);font-size:12.5px;font-weight:600;min-height:18px;}
   .judge-status.loading{color:var(--warn);}
@@ -242,7 +245,11 @@
   <section id="screen-culture" class="screen">
     <div class="briefing" style="margin-bottom:22px;">
       <h1 style="font-size:clamp(20px,3vw,28px);">พนักงานที่เหลือกำลังจับตาดูคุณอยู่</h1>
-      <p>หลังปลดคนไปแล้ว เหลือพนักงานอยู่ <b id="culture-remaining" style="color:var(--text);font-weight:800;">0</b> คน ผู้บริหารต้องประกาศทิศทางวัฒนธรรมการทำงานให้ทีมที่เหลือทราบ — การตัดสินใจนี้จะส่งผลต่อจำนวนคนที่ "ลาออกเอง" เพิ่มเติม นอกเหนือจากที่ปลดไปแล้ว เหมือนที่เกิดขึ้นจริงกับ Twitter ตอนประกาศวัฒนธรรม "hardcore"</p>
+      <p>ทีมคุณปลดพนักงานไปแล้ว <b id="culture-cutcount" style="color:var(--danger);font-weight:800;">0</b> คน เหลือพนักงานอยู่ <b id="culture-remaining" style="color:var(--text);font-weight:800;">0</b> คน ผู้บริหารต้องประกาศทิศทางวัฒนธรรมการทำงานให้ทีมที่เหลือทราบ — การตัดสินใจนี้จะส่งผลต่อจำนวนคนที่ "ลาออกเอง" เพิ่มเติม นอกเหนือจากที่ปลดไปแล้ว เหมือนที่เกิดขึ้นจริงกับ Twitter ตอนประกาศวัฒนธรรม "hardcore"</p>
+      <div class="scenario-box" id="culture-scenario">
+        <div class="scenario-label">เสียงจากพนักงานที่ถูกปลดออก</div>
+        <p id="culture-scenario-text"></p>
+      </div>
     </div>
     <div class="section-title">ขั้นที่ 3 — ประกาศนโยบายวัฒนธรรมการทำงาน</div>
     <div class="policy-grid" id="culture-grid"></div>
@@ -331,6 +338,45 @@
     {id:'moderate', tag:'PUSH', name:'ประนีประนอม — เพิ่มความเข้มข้น พร้อมพูดคุย', desc:'ขอให้ทำงานหนักขึ้นกว่าเดิม แต่เปิดให้เจรจาและมีช่วงปรับตัว ไม่ใช้คำขาด', attrition:0.15, mods:{ops:3, pr:3, legal:5, morale:8}},
     {id:'balanced', tag:'STEADY', name:'รักษาสมดุล — ไม่เปลี่ยนวัฒนธรรมการทำงาน', desc:'ไม่บังคับเปลี่ยนแปลงวัฒนธรรมการทำงาน ให้ทีมที่เหลือทำงานตามปกติ', attrition:0.04, mods:{ops:0, pr:-3, legal:0, morale:-5}},
   ];
+
+  // Pre-written vignettes about what happened to the people who got laid off —
+  // picked deterministically from the round-1 result, no API call involved.
+  // Checked in priority order: method-text keywords first (most specific to
+  // what the team actually wrote), then score thresholds, then cut %, then a
+  // random generic fallback for variety.
+  const SCENARIO_POOL = {
+    method: [
+      {test:/กลางดึก|เที่ยงคืน|ทันที|ไม่แจ้งล่วงหน้า|ตัดระบบ/, text:'พนักงานหลายคนรู้ตัวว่าถูกปลดตอนพยายามล็อกอินเข้าอีเมลบริษัทตอนเช้าแล้วเข้าไม่ได้ บางคนกำลังทำงานค้างอยู่กลางดึกแล้วจอดับไปเฉยๆ ไม่มีใครทันได้ตั้งตัว'},
+      {test:/แจ้งล่วงหน้า|60\s*วัน|ชดเชย/, text:'พนักงานที่ได้รับผลกระทบได้รับอีเมลแจ้งอย่างเป็นทางการล่วงหน้า พร้อมรายละเอียดค่าชดเชยและวันทำงานสุดท้ายที่ชัดเจน หลายคนบอกว่าอย่างน้อยก็มีเวลาตั้งตัวและวางแผนต่อ'},
+      {test:/สุ่ม|เรียกกลับ|ตัดผิด|ผิดคน/, text:'มีพนักงานอย่างน้อยหนึ่งคนที่ถูกปลดไปแล้วได้รับอีเมลขอโทษให้กลับมาทำงานในอีกสองวันถัดมา เพราะระบบคัดชื่อผิดพลาด สร้างความสับสนและเสียงวิจารณ์ไปทั้งทีม'},
+      {test:/1:1|สัมภาษณ์|พูดคุย|รายบุคคล/, text:'หัวหน้าทีมนัดคุยกับพนักงานที่ได้รับผลกระทบทีละคน อธิบายเหตุผลและแนวทางช่วยเหลือ แม้บรรยากาศจะหนักใจ แต่หลายคนบอกว่าอย่างน้อยก็รู้สึกได้รับความเคารพ'},
+    ],
+    score: [
+      {check:s=>s.legal>=60, text:'พนักงานบางคนเริ่มปรึกษาทนายความเรื่องกฎหมายแรงงาน มีข่าวลือหนาหูว่าอาจมีการรวมกลุ่มฟ้องร้องบริษัท'},
+      {check:s=>s.pr>=60, text:'เรื่องราวการปลดคนเริ่มกลายเป็นกระแสในโซเชียลมีเดีย มีอดีตพนักงานออกมาโพสต์เล่าประสบการณ์ที่ไม่ดีให้สื่อและสาธารณะเห็น'},
+      {check:s=>s.morale<=30, text:'พนักงานที่เหลืออยู่หลายคนเริ่มปรับปรุงเรซูเม่ของตัวเองอย่างเงียบๆ กลัวว่าตัวเองจะเป็นคิวต่อไป'},
+      {check:s=>s.ops>=60, text:'ทีมที่เหลือต้องรับงานของเพื่อนร่วมทีมที่ถูกปลดไปเพิ่ม บางคนบ่นว่างานล้นมือจนไม่มีเวลาส่งต่องานให้เรียบร้อยก่อนคนเก่าออกไป'},
+    ],
+    pct: [
+      {check:s=>s.overallPct>=0.5, text:'เกือบครึ่งของออฟฟิศว่างเปล่าไปในพริบตา หลายโต๊ะทำงานถูกทิ้งไว้พร้อมของใช้ส่วนตัวที่เจ้าของยังไม่ได้กลับมาเก็บ'},
+      {check:s=>s.overallPct>=0.25, text:'เพื่อนร่วมงานหลายคนหายไปจากช่องแชทกลุ่มทีมในชั่วข้ามคืน บางคนไม่ได้กล่าวคำอำลาด้วยซ้ำ'},
+      {check:()=>true, text:'การเปลี่ยนแปลงในทีมค่อนข้างเบา พนักงานส่วนใหญ่ยังทำงานตามปกติ แต่ก็อดถามไถ่ข่าวกันในกลุ่มแชทไม่ได้'},
+    ],
+    generic: [
+      'บางคนที่ถูกปลดไปแล้วโพสต์ลง LinkedIn ทันทีว่า "เปิดรับโอกาสใหม่" พร้อมแท็กเพื่อนร่วมงานเก่าให้ช่วยแชร์',
+      'กลุ่มแชทของอดีตพนักงานที่ถูกปลดถูกตั้งขึ้นภายในไม่กี่ชั่วโมง ใช้แลกเปลี่ยนข่าวสารการหางานใหม่และให้กำลังใจกัน',
+      'นักข่าวสายเทคเริ่มติดต่อขอสัมภาษณ์อดีตพนักงานที่ถูกปลด เพื่อทำสกู๊ปพิเศษเกี่ยวกับเหตุการณ์ครั้งนี้',
+    ],
+  };
+
+  function pickScenario(round1, methodText){
+    const txt = methodText || '';
+    for(const m of SCENARIO_POOL.method){ if(m.test.test(txt)) return m.text; }
+    for(const s of SCENARIO_POOL.score){ if(s.check(round1)) return s.text; }
+    for(const p of SCENARIO_POOL.pct){ if(p.check(round1)) return p.text; }
+    const g = SCENARIO_POOL.generic;
+    return g[Math.floor(Math.random()*g.length)];
+  }
 
   const state = {
     team: '',
@@ -494,7 +540,9 @@
 
   function renderCultureScreen(round1){
     const remaining = TOTAL_COUNT - round1.totalCut;
-    $('#culture-remaining').textContent = remaining;
+    $('#culture-cutcount').textContent = round1.totalCut.toLocaleString();
+    $('#culture-remaining').textContent = remaining.toLocaleString();
+    $('#culture-scenario-text').textContent = pickScenario(round1, state.methodText);
     const grid = $('#culture-grid');
     grid.innerHTML = CULTURE_POLICIES.map(p=>`
       <label class="policy-card" data-id="${p.id}">
