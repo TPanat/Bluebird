@@ -53,6 +53,26 @@
   .verdict-box{margin-top:10px;border-left:3px solid var(--accent);background:rgba(29,155,240,.05);padding:8px 10px;font-size:13px;color:var(--text);line-height:1.6;border-radius:0 8px 8px 0;}
 
   .empty{color:var(--dim);font-family:var(--mono);font-size:13px;padding:30px;text-align:center;background:var(--panel2);border:1px dashed var(--border);border-radius:16px;}
+
+  .tabs{display:flex;gap:8px;margin-bottom:18px;border-bottom:1px solid var(--border);}
+  .tab-btn{cursor:pointer;border:none;background:transparent;font-family:var(--display);font-weight:700;font-size:14px;padding:10px 4px;color:var(--dim);border-bottom:2px solid transparent;margin-bottom:-1px;}
+  .tab-btn.active{color:var(--accent);border-bottom-color:var(--accent);}
+  .tab-btn:not(.active):hover{color:var(--text);}
+
+  .ranking-controls{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:18px;}
+  .seg-group{display:inline-flex;background:var(--panel2);border:1px solid var(--border);border-radius:999px;padding:3px;}
+  .seg-btn{cursor:pointer;border:none;background:transparent;font-family:var(--mono);font-size:12px;font-weight:700;padding:7px 14px;border-radius:999px;color:var(--dim);}
+  .seg-btn.active{background:var(--accent);color:#ffffff;}
+  .viewall-toggle{display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:12.5px;color:var(--dim);cursor:pointer;}
+
+  .rank-group{margin-bottom:20px;}
+  .rank-group-head{font-family:var(--display);font-weight:800;font-size:14.5px;margin-bottom:8px;padding-left:2px;}
+  .rank-count{font-family:var(--mono);font-weight:500;font-size:12px;color:var(--dim);}
+  .rank-row{display:flex;align-items:center;gap:12px;background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:9px 14px;margin-bottom:6px;}
+  .rank-num{font-family:var(--mono);font-weight:800;font-size:13px;color:var(--dim);width:28px;flex:0 0 auto;}
+  .rank-team{flex:1;font-weight:700;font-size:14px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .rank-ci{font-family:var(--mono);font-weight:800;font-size:12.5px;color:var(--accent);flex:0 0 auto;}
+  .rank-empty{font-family:var(--mono);font-size:12.5px;color:var(--dim);padding:10px 14px;}
 </style>
 </head>
 <body>
@@ -77,14 +97,32 @@
   </div>
 
   <div id="dashboard-view" style="display:none;">
-    <div class="toolbar">
-      <div class="stat-strip" id="stat-strip"></div>
-      <div style="display:flex;gap:10px;">
-        <button class="btn btn-ghost" id="btn-refresh">รีเฟรช</button>
-        <button class="btn btn-danger" id="btn-reset">ล้างข้อมูลทั้งหมด</button>
-      </div>
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="list">รายชื่อทั้งหมด</button>
+      <button class="tab-btn" data-tab="ranking">จัดอันดับ</button>
     </div>
-    <div class="cards" id="cards"></div>
+
+    <div id="tab-list">
+      <div class="toolbar">
+        <div class="stat-strip" id="stat-strip"></div>
+        <div style="display:flex;gap:10px;">
+          <button class="btn btn-ghost" id="btn-refresh">รีเฟรช</button>
+          <button class="btn btn-danger" id="btn-reset">ล้างข้อมูลทั้งหมด</button>
+        </div>
+      </div>
+      <div class="cards" id="cards"></div>
+    </div>
+
+    <div id="tab-ranking" style="display:none;">
+      <div class="ranking-controls">
+        <div class="seg-group" id="sort-dir">
+          <button class="seg-btn active" data-dir="desc">คะแนนสูงสุด 5 อันดับ</button>
+          <button class="seg-btn" data-dir="asc">คะแนนต่ำสุด 5 อันดับ</button>
+        </div>
+        <label class="viewall-toggle"><input type="checkbox" id="view-all-toggle"> View All (ไม่จำกัด 5 อันดับ)</label>
+      </div>
+      <div id="ranking-output"></div>
+    </div>
   </div>
 </div>
 
@@ -92,18 +130,21 @@
 (function(){
   "use strict";
   const $ = s => document.querySelector(s);
+  const $$ = s => Array.from(document.querySelectorAll(s));
   let password = sessionStorage.getItem('bluebird_admin_pw') || '';
+  let lastRows = [];
+  const rankingState = { dir: 'desc', viewAll: false };
 
-  function gradeColor(ci){
-    if(ci<30) return 'var(--good)';
-    if(ci<55) return 'var(--warn)';
-    return 'var(--danger)';
+  function gradeInfo(ci){
+    if(ci<30) return {en:'STABLE', th:'มั่นคง', color:'var(--good)', tier:'stable'};
+    if(ci<55) return {en:'AT RISK', th:'เริ่มเสี่ยง', color:'var(--warn)', tier:'atRisk'};
+    if(ci<75) return {en:'CRISIS', th:'วิกฤต', color:'var(--danger)', tier:'crisis'};
+    return {en:'CATASTROPHIC', th:'หายนะ', color:'var(--danger)', tier:'catastrophic'};
   }
-  function gradeLabel(ci){
-    if(ci<30) return 'STABLE';
-    if(ci<55) return 'AT RISK';
-    if(ci<75) return 'CRISIS';
-    return 'CATASTROPHIC';
+
+  const TIER_ORDER = ['catastrophic','crisis','atRisk','stable'];
+  function tierLabel(tier){
+    return {catastrophic:'หายนะ (CATASTROPHIC)', crisis:'วิกฤต (CRISIS)', atRisk:'เริ่มเสี่ยง (AT RISK)', stable:'มั่นคง (STABLE)'}[tier];
   }
 
   async function loadData(){
@@ -143,8 +184,8 @@
               <div class="team-name">${escapeHtml(r.team)}</div>
               <div class="ts">${time}</div>
             </div>
-            <div class="grade-pill" style="background:${gradeColor(r.crisisIndex)}22;color:${gradeColor(r.crisisIndex)};border:1px solid ${gradeColor(r.crisisIndex)};">
-              ${gradeLabel(r.crisisIndex)} · CI ${r.crisisIndex}
+            <div class="grade-pill" style="background:${gradeInfo(r.crisisIndex).color}22;color:${gradeInfo(r.crisisIndex).color};border:1px solid ${gradeInfo(r.crisisIndex).color};">
+              ${gradeInfo(r.crisisIndex).en} · ${gradeInfo(r.crisisIndex).th} · CI ${r.crisisIndex}
             </div>
           </div>
           <div class="method-text">${escapeHtml(r.method || '(ไม่มีคำอธิบาย)')}</div>
@@ -167,11 +208,43 @@
     return (str || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   }
 
+  function renderRanking(){
+    const groups = {catastrophic:[], crisis:[], atRisk:[], stable:[]};
+    lastRows.forEach(r => groups[gradeInfo(r.crisisIndex||0).tier].push(r));
+
+    $('#ranking-output').innerHTML = TIER_ORDER.map(tier=>{
+      let list = groups[tier].slice().sort((a,b)=>
+        rankingState.dir === 'desc' ? (b.crisisIndex-a.crisisIndex) : (a.crisisIndex-b.crisisIndex)
+      );
+      const total = list.length;
+      if(!rankingState.viewAll) list = list.slice(0,5);
+      const rowsHtml = list.length ? list.map((r,i)=>`
+        <div class="rank-row">
+          <div class="rank-num">#${i+1}</div>
+          <div class="rank-team">${escapeHtml(r.team)}</div>
+          <div class="rank-ci">CI ${r.crisisIndex}</div>
+        </div>
+      `).join('') : '<div class="rank-empty">ไม่มีทีมในกลุ่มนี้</div>';
+      return `
+        <div class="rank-group">
+          <div class="rank-group-head">${tierLabel(tier)} <span class="rank-count">(${total} ทีม)</span></div>
+          ${rowsHtml}
+        </div>
+      `;
+    }).join('');
+  }
+
+  function applyRows(rows){
+    lastRows = rows;
+    renderStats(rows);
+    renderCards(rows);
+    if($('#tab-ranking').style.display !== 'none') renderRanking();
+  }
+
   async function refresh(){
     try{
       const rows = await loadData();
-      renderStats(rows);
-      renderCards(rows);
+      applyRows(rows);
     }catch(err){
       $('#cards').innerHTML = `<div class="empty" style="color:var(--danger);">${err.message}</div>`;
     }
@@ -185,8 +258,7 @@
       sessionStorage.setItem('bluebird_admin_pw', password);
       $('#login-view').style.display = 'none';
       $('#dashboard-view').style.display = 'block';
-      renderStats(rows);
-      renderCards(rows);
+      applyRows(rows);
     }catch(err){
       $('#login-err').textContent = err.message;
     }
@@ -210,13 +282,37 @@
     }
   });
 
+  $$('.tab-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      $$('.tab-btn').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      const tab = btn.dataset.tab;
+      $('#tab-list').style.display = tab==='list' ? 'block' : 'none';
+      $('#tab-ranking').style.display = tab==='ranking' ? 'block' : 'none';
+      if(tab==='ranking') renderRanking();
+    });
+  });
+
+  $$('#sort-dir .seg-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      $$('#sort-dir .seg-btn').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      rankingState.dir = btn.dataset.dir;
+      renderRanking();
+    });
+  });
+
+  $('#view-all-toggle').addEventListener('change', e=>{
+    rankingState.viewAll = e.target.checked;
+    renderRanking();
+  });
+
   // auto-login if password cached in this browser tab session
   if(password){
     loadData().then(rows=>{
       $('#login-view').style.display = 'none';
       $('#dashboard-view').style.display = 'block';
-      renderStats(rows);
-      renderCards(rows);
+      applyRows(rows);
     }).catch(()=>{ sessionStorage.removeItem('bluebird_admin_pw'); });
   }
 })();
