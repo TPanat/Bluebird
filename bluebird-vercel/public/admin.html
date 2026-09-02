@@ -86,6 +86,22 @@
   .rank-row:hover{background:var(--panel2);}
   .rank-chevron{font-size:11px;color:var(--dim);flex:0 0 auto;transition:transform .15s ease;}
   .rank-detail{display:none;margin-top:6px;background:var(--panel2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;}
+
+  .live-header{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:18px;}
+  .live-pulse{display:inline-flex;align-items:center;gap:6px;font-family:var(--mono);font-size:12px;color:var(--dim);}
+  .live-dot{width:8px;height:8px;border-radius:50%;background:var(--good);animation:live-pulse 1.6s ease-in-out infinite;}
+  @keyframes live-pulse{0%,100%{opacity:1;}50%{opacity:.25;}}
+  #live-output{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;align-items:start;}
+  @media (max-width:860px){ #live-output{grid-template-columns:repeat(2,1fr);} }
+  @media (max-width:520px){ #live-output{grid-template-columns:1fr;} }
+  .live-group{background:var(--panel2);border:1px solid var(--border);border-radius:12px;padding:12px;min-width:0;}
+  .live-group-head{font-family:var(--display);font-weight:800;font-size:13px;margin-bottom:8px;padding-left:2px;line-height:1.3;}
+  .live-row{display:flex;align-items:center;gap:8px;background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:8px 10px;margin-bottom:6px;transition:background .4s ease;}
+  .live-row.flash{background:rgba(29,155,240,.12);}
+  .live-num{font-family:var(--mono);font-weight:800;font-size:12px;color:var(--dim);width:20px;flex:0 0 auto;}
+  .live-team{flex:1;font-weight:700;font-size:13px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .live-ci{font-family:var(--mono);font-weight:800;font-size:12px;flex:0 0 auto;}
+  .live-empty{font-family:var(--mono);font-size:12px;color:var(--dim);padding:8px 10px;}
 </style>
 </head>
 <body>
@@ -113,6 +129,7 @@
     <div class="tabs">
       <button class="tab-btn active" data-tab="list">รายชื่อทั้งหมด</button>
       <button class="tab-btn" data-tab="ranking">จัดอันดับ</button>
+      <button class="tab-btn" data-tab="live">Live Scoreboard</button>
     </div>
 
     <div id="tab-list">
@@ -136,6 +153,14 @@
         <label class="viewall-toggle"><input type="checkbox" id="view-all-toggle"> View All (ไม่จำกัด 5 อันดับ)</label>
       </div>
       <div id="ranking-output"></div>
+    </div>
+
+    <div id="tab-live" style="display:none;">
+      <div class="live-header">
+        <div class="tag" style="font-size:12.5px;">อันดับจะอัปเดตอัตโนมัติทุก 3 วินาที ตามคะแนนล่าสุดที่แต่ละทีมส่งเข้ามา</div>
+        <div class="live-pulse"><span class="live-dot"></span>LIVE</div>
+      </div>
+      <div id="live-output"></div>
     </div>
   </div>
 </div>
@@ -273,6 +298,40 @@
     }).join('');
   }
 
+  let prevCiByTeam = {};
+
+  function renderLive(){
+    const groups = {catastrophic:[], crisis:[], atRisk:[], stable:[]};
+    lastRows.forEach(r => groups[gradeInfo(r.crisisIndex||0).tier].push(r));
+
+    const nextCiByTeam = {};
+    $('#live-output').innerHTML = TIER_ORDER.map(tier=>{
+      const list = groups[tier].slice().sort((a,b)=> b.crisisIndex - a.crisisIndex);
+      const color = gradeInfo(tier==='catastrophic'?75:tier==='crisis'?55:tier==='atRisk'?30:0).color;
+      const rowsHtml = list.length ? list.map((r,i)=>{
+        nextCiByTeam[r.team] = r.crisisIndex;
+        const changed = prevCiByTeam.hasOwnProperty(r.team) && prevCiByTeam[r.team] !== r.crisisIndex;
+        return `
+        <div class="live-row${changed ? ' flash' : ''}">
+          <div class="live-num">#${i+1}</div>
+          <div class="live-team">${escapeHtml(r.team)}</div>
+          <div class="live-ci" style="color:${color};">CI ${r.crisisIndex}</div>
+        </div>
+      `;
+      }).join('') : '<div class="live-empty">ไม่มีทีมในกลุ่มนี้</div>';
+      return `
+        <div class="live-group">
+          <div class="live-group-head">${tierLabel(tier)} <span class="rank-count">(${list.length} ทีม)</span></div>
+          ${rowsHtml}
+        </div>
+      `;
+    }).join('');
+    prevCiByTeam = nextCiByTeam;
+
+    // clear the flash highlight shortly after render so it reads as a pulse, not a permanent state
+    setTimeout(()=>{ $$('.live-row.flash').forEach(el=>el.classList.remove('flash')); }, 900);
+  }
+
   function renderCardsFiltered(){
     const filtered = listFilter === 'all'
       ? lastRows
@@ -285,6 +344,26 @@
     renderStats(rows);
     renderCardsFiltered();
     if($('#tab-ranking').style.display !== 'none') renderRanking();
+    if($('#tab-live').style.display !== 'none') renderLive();
+  }
+
+  let pollTimer = null;
+  const POLL_MS = 3000;
+
+  function startPolling(){
+    if(pollTimer) return;
+    pollTimer = setInterval(async ()=>{
+      try{
+        const rows = await loadData();
+        applyRows(rows);
+      }catch(err){
+        // silent: don't disrupt the dashboard on a transient poll failure
+      }
+    }, POLL_MS);
+  }
+
+  function stopPolling(){
+    if(pollTimer){ clearInterval(pollTimer); pollTimer = null; }
   }
 
   async function refresh(){
@@ -305,6 +384,7 @@
       $('#login-view').style.display = 'none';
       $('#dashboard-view').style.display = 'block';
       applyRows(rows);
+      startPolling();
     }catch(err){
       $('#login-err').textContent = err.message;
     }
@@ -335,7 +415,9 @@
       const tab = btn.dataset.tab;
       $('#tab-list').style.display = tab==='list' ? 'block' : 'none';
       $('#tab-ranking').style.display = tab==='ranking' ? 'block' : 'none';
+      $('#tab-live').style.display = tab==='live' ? 'block' : 'none';
       if(tab==='ranking') renderRanking();
+      if(tab==='live') renderLive();
     });
   });
 
@@ -378,6 +460,7 @@
       $('#login-view').style.display = 'none';
       $('#dashboard-view').style.display = 'block';
       applyRows(rows);
+      startPolling();
     }).catch(()=>{ sessionStorage.removeItem('bluebird_admin_pw'); });
   }
 })();
