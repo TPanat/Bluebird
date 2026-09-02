@@ -75,7 +75,10 @@
   .rank-empty{font-family:var(--mono);font-size:12.5px;color:var(--dim);padding:10px 14px;}
 
   .risk-breakdown{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px;}
-  .risk-pill{font-family:var(--mono);font-size:12px;font-weight:700;border:1px solid;border-radius:999px;padding:6px 12px;background:var(--panel2);}
+  .risk-pill{font-family:var(--mono);font-size:12px;font-weight:700;border:1px solid var(--pill-color, var(--border));color:var(--pill-color, var(--dim));border-radius:999px;padding:6px 12px;background:var(--panel2);cursor:pointer;user-select:none;transition:background .12s ease, color .12s ease;}
+  .risk-pill:hover{filter:brightness(.97);}
+  .risk-pill.active{background:var(--pill-color, var(--accent));color:#ffffff;}
+  .risk-pill.active b{color:#ffffff;}
   .risk-pill b{margin-right:4px;}
 
   .rank-item{margin-bottom:8px;}
@@ -144,6 +147,7 @@
   const $$ = s => Array.from(document.querySelectorAll(s));
   let password = sessionStorage.getItem('bluebird_admin_pw') || '';
   let lastRows = [];
+  let listFilter = 'all';
   const rankingState = { dir: 'desc', viewAll: false };
 
   function gradeInfo(ci){
@@ -176,10 +180,19 @@
 
     const counts = {stable:0, atRisk:0, crisis:0, catastrophic:0};
     rows.forEach(r => counts[gradeInfo(r.crisisIndex||0).tier]++);
-    $('#risk-breakdown').innerHTML = TIER_ORDER.map(tier=>{
-      const color = gradeInfo(tier==='catastrophic'?75:tier==='crisis'?55:tier==='atRisk'?30:0).color;
-      return `<div class="risk-pill" style="border-color:${color};color:${color};"><b>${counts[tier]}</b>${tierLabel(tier)}</div>`;
-    }).join('');
+    const pills = [{tier:'all', label:'ทั้งหมด', count:n, color:'var(--accent)'}].concat(
+      TIER_ORDER.map(tier => ({
+        tier,
+        label: tierLabel(tier),
+        count: counts[tier],
+        color: gradeInfo(tier==='catastrophic'?75:tier==='crisis'?55:tier==='atRisk'?30:0).color,
+      }))
+    );
+    $('#risk-breakdown').innerHTML = pills.map(p=>`
+      <div class="risk-pill${listFilter===p.tier?' active':''}" data-tier="${p.tier}" style="--pill-color:${p.color};">
+        <b>${p.count}</b>${p.label}
+      </div>
+    `).join('');
   }
 
   function buildTeamDetail(r){
@@ -260,10 +273,17 @@
     }).join('');
   }
 
+  function renderCardsFiltered(){
+    const filtered = listFilter === 'all'
+      ? lastRows
+      : lastRows.filter(r => gradeInfo(r.crisisIndex||0).tier === listFilter);
+    renderCards(filtered);
+  }
+
   function applyRows(rows){
     lastRows = rows;
     renderStats(rows);
-    renderCards(rows);
+    renderCardsFiltered();
     if($('#tab-ranking').style.display !== 'none') renderRanking();
   }
 
@@ -342,6 +362,14 @@
     const isOpen = detail.style.display === 'block';
     detail.style.display = isOpen ? 'none' : 'block';
     if(chevron) chevron.style.transform = isOpen ? 'rotate(0deg)' : 'rotate(180deg)';
+  });
+
+  $('#risk-breakdown').addEventListener('click', e=>{
+    const pill = e.target.closest('.risk-pill');
+    if(!pill) return;
+    listFilter = pill.dataset.tier;
+    renderStats(lastRows);
+    renderCardsFiltered();
   });
 
   // auto-login if password cached in this browser tab session
